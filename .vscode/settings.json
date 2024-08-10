@@ -1,0 +1,33 @@
+{
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "pubspec.yaml": ".package,.metadata,pubspec.lock,analysis_options.yaml,*.yaml"
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "editor.formatOnSave": true,
+  "cSpell.words": [
+    "AHSV",
+    "Allerta",
+    "AUTOINCREMENT",
+    "colorpicker",
+    "Cupertino",
+    "fluttertoast",
+    "Foldit",
+    "Glegoo",
+    "Hana",
+    "LTRB",
+    "LXGW",
+    "Melete",
+    "Monoton",
+    "NOCASE",
+    "oppo",
+    "RGBO",
+    "sqflite",
+    "unfocus",
+    "Unifont",
+    "wght"
+  ]
+}
