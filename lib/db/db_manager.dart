@@ -1,15 +1,8 @@
 import 'package:BackArt/db/setting_db.dart';
 
-class DbManager{
-  static forFeature() async{
-    List<SettingDb> list =[
-      SettingDb.instance(),
-    ];
-    for(int i = 0; i < list.length; i++){
-      var entity = list[i];
-      while(!entity.exists){
-        await Future.delayed(const Duration(microseconds: 60),(){});
-      }
-    }
+class DbManager {
+  static Future<void> initialize() async {
+    // 调用异步单例，它会返回一个完全初始化好的实例
+    await SettingDb.instance();
   }
 }

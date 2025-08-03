@@ -11,14 +11,14 @@ class ImageAssetsStore {
   static const String topCenter = '${_iconPath}top_center.svg';
   static const String bottomCenter = '${_iconPath}bottom_center.svg';
   static const String center = '${_iconPath}center.svg';
-  static const String centerLeft= '${_iconPath}center_left.svg';
+  static const String centerLeft = '${_iconPath}center_left.svg';
   static const String centerRight = '${_iconPath}center_right.svg';
   static const String githubMark = '${_iconPath}github-mark.png';
   static const String githubMarkWhite = '${_iconPath}github-mark-white.png';
   static const String wxPay = '${_imagePath}wechat_pay.jpg';
   static const String wxTip = '${_imagePath}wechat_tip.jpg';
 
-  static String?  getImage(String name) {
+  static String? getImage(String name) {
     switch (name) {
       case 'topLeft':
         return topLeft;

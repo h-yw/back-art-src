@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 class SlidePicker extends StatefulWidget {
-  const SlidePicker(
-      {Key? key, required this.pickerColor, required this.onColorChanged})
-      : super(key: key);
+  const SlidePicker({
+    Key? key,
+    required this.pickerColor,
+    required this.onColorChanged,
+  }) : super(key: key);
   final Color pickerColor;
   final ValueChanged<Color> onColorChanged;
   @override
@@ -29,10 +31,10 @@ class _SlidePickerState extends State<SlidePicker> {
   String getColorParams(int pos) {
     final Color color = currentHsvColor.toColor();
     return [
-      color.red.toString(),
-      color.green.toString(),
-      color.blue.toString(),
-      '${(color.opacity * 100).round()}',
+      (color.r * 255).round().toString(),
+      (color.g * 255).round().toString(),
+      (color.b * 255).round().toString(),
+      '${(color.a * 100).round()}',
     ][pos];
   }
 
@@ -41,7 +43,7 @@ class _SlidePickerState extends State<SlidePicker> {
     final List<TrackType> trackTypes = [
       TrackType.red,
       TrackType.green,
-      TrackType.blue
+      TrackType.blue,
     ];
     List<SizedBox> sliders = [
       for (TrackType trackType in trackTypes)
@@ -74,11 +76,7 @@ class _SlidePickerState extends State<SlidePicker> {
     return Column(
       // mainAxisAlignment: MainAxisAlignment.center,
       // crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        indicator(),
-        ...sliders,
-        const SizedBox(height: 20.0),
-      ],
+      children: [indicator(), ...sliders, const SizedBox(height: 20.0)],
     );
   }
 
@@ -102,7 +100,8 @@ class _SlidePickerState extends State<SlidePicker> {
       child: GestureDetector(
         onTap: () {
           setState(
-              () => currentHsvColor = HSVColor.fromColor(widget.pickerColor));
+            () => currentHsvColor = HSVColor.fromColor(widget.pickerColor),
+          );
           widget.onColorChanged(currentHsvColor.toColor());
         },
         child: Container(
@@ -111,19 +110,18 @@ class _SlidePickerState extends State<SlidePicker> {
           margin: const EdgeInsets.only(bottom: 15),
           foregroundDecoration: BoxDecoration(
             gradient: LinearGradient(
-                colors: [
-                  widget.pickerColor,
-                  widget.pickerColor,
-                  currentHsvColor.toColor(),
-                  currentHsvColor.toColor()
-                ],
-                begin: const Alignment(-1, -3),
-                end: const Alignment(1, 3),
-                stops: const [0.0, 0.5, 0.5, 1]),
+              colors: [
+                widget.pickerColor,
+                widget.pickerColor,
+                currentHsvColor.toColor(),
+                currentHsvColor.toColor(),
+              ],
+              begin: const Alignment(-1, -3),
+              end: const Alignment(1, 3),
+              stops: const [0.0, 0.5, 0.5, 1],
+            ),
           ),
-          child: const CustomPaint(
-            painter: CheckerPainter(),
-          ),
+          child: const CustomPaint(painter: CheckerPainter()),
         ),
       ),
     );

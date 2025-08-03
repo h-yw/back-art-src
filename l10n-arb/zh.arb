@@ -1,12 +1,12 @@
 {
   "@@locale": "zh",
   "app_name": "背景艺术",
-    "app_setting":"设置",
-   "app_language": "语言",
+  "app_setting": "设置",
+  "app_language": "语言",
   "nav_platform": "平台",
   "nav_color": "颜色",
   "nav_text": "文本",
-  "nav_export":"导出",
+  "nav_export": "导出",
   "filed_content": "内容",
   "filed_font_family": "字体",
   "filed_font_size": "字号",
@@ -22,9 +22,9 @@
   "filed_mark_pos_bottom_left": "左下",
   "filed_mark_pos_bottom_right": "右下",
   "hint_content": "请输入内容",
-  "save_success_msg":"保存成功！",
+  "save_success_msg": "保存成功！",
   "save_failed_msg": "保存失败！",
   "nav_about": "关于",
-  "page_created":"制作",
-  "page_setting":"设置"
+  "page_created": "制作",
+  "page_setting": "设置"
 }

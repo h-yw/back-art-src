@@ -4,10 +4,7 @@ class SettingModel {
   String? language;
   int? id;
 
-  SettingModel({
-    required this.id,
-    this.language,
-  });
+  SettingModel({required this.id, this.language});
   SettingModel.fromJson(Map<String, dynamic> json) {
     language = json['language'];
     id = json['id'];

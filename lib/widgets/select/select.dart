@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import '../../utils/camel_to_snake.dart';
 
 class Select extends StatefulWidget {
-  const Select(
-      {Key? key,
-      required this.onSelect,
-      required this.items,
-      this.value,
-      this.height = 40,
-      this.borderRadius = const BorderRadius.all(Radius.circular(4))})
-      : super(key: key);
+  const Select({
+    Key? key,
+    required this.onSelect,
+    required this.items,
+    this.value,
+    this.height = 40,
+    this.borderRadius = const BorderRadius.all(Radius.circular(4)),
+  }) : super(key: key);
   final double height;
   final BorderRadius borderRadius;
   final ValueChanged<String> onSelect;
@@ -56,20 +56,23 @@ class _SelectState extends State<Select> with SingleTickerProviderStateMixin {
     return widget.items
         .map(
           (e) => GestureDetector(
-              onTap: () {
-                _onSelect(e);
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 4),
-                child: IconImage(
-                  colorFilter: _currentVal == e
-                      ? ColorFilter.mode(
-                          Theme.of(context).primaryColor, BlendMode.srcIn)
-                      : null,
-                  assetName: "assets/icons/${camelToSnake(e)}.svg",
-                  size: 40,
-                ),
-              )),
+            onTap: () {
+              _onSelect(e);
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 4),
+              child: IconImage(
+                colorFilter: _currentVal == e
+                    ? ColorFilter.mode(
+                        Theme.of(context).primaryColor,
+                        BlendMode.srcIn,
+                      )
+                    : null,
+                assetName: "assets/icons/${camelToSnake(e)}.svg",
+                size: 40,
+              ),
+            ),
+          ),
         )
         .toList();
   }
@@ -88,23 +91,25 @@ class _SelectState extends State<Select> with SingleTickerProviderStateMixin {
       },
       menuChildren: _buildMenu(),
       child: Container(
-          // height: widget.height,
-          // height: 40,
-          // padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: const BorderRadius.all(Radius.circular(4.0)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              IconImage(
-                  size: 40,
-                  assetName: "assets/icons/${camelToSnake(_currentVal)}.svg"),
-            ],
-          )),
+        // height: widget.height,
+        // height: 40,
+        // padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey),
+          borderRadius: const BorderRadius.all(Radius.circular(4.0)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            IconImage(
+              size: 40,
+              assetName: "assets/icons/${camelToSnake(_currentVal)}.svg",
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

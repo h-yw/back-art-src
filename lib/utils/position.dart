@@ -10,13 +10,7 @@ enum PositionEnum {
   bottomRight,
 }
 
-enum PositionType {
-  top,
-  bottom,
-  left,
-  right,
-  center,
-}
+enum PositionType { top, bottom, left, right, center }
 
 class AlignLayout {
   static PositionEnum getPositionEnum(String position) {
