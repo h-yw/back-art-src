@@ -15,7 +15,6 @@ import 'package:BackArt/features/editor/widgets/unicode_emoji_selector_panel.dar
 import 'package:BackArt/features/export/service/export_service.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:ui' as ui;
@@ -189,121 +188,9 @@ class EditorScreen extends ConsumerWidget {
         selectedLayer != null && selectedLayer is! BackgroundLayer;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('BackArt'), // You can customize the title
-        leading: IconButton(
-          icon: const Icon(Icons.layers_outlined),
-          tooltip: '图层列表',
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.undo),
-            tooltip: '撤销',
-            onPressed: canUndo ? () => canvasNotifier.undo() : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.redo),
-            tooltip: '重做',
-            onPressed: canRedo ? () => canvasNotifier.redo() : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            tooltip: '分享图片',
-            onPressed: () => _shareImage(context, ref),
-          ),
-          IconButton(
-            icon: const Icon(Icons.save_alt_outlined),
-            tooltip: '导出图片',
-            onPressed: () => _exportImage(context, ref),
-          ),
-          PopupMenuButton<Function>(
-            icon: const Icon(Icons.more_vert),
-            tooltip: '更多选项',
-            onSelected: (action) => action(),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                enabled: isLayerSelected,
-                value: () {
-                  final updatedLayer = selectedLayer!.copyWith(rotation: 0.0);
-                  canvasNotifier.updateLayer(updatedLayer);
-                },
-                child: const ListTile(
-                  leading: Icon(Icons.rotate_90_degrees_ccw),
-                  title: Text('重置旋转'),
-                ),
-              ),
-              PopupMenuItem(
-                enabled: isLayerSelected,
-                value: () {
-                  final updatedLayer = selectedLayer!.copyWith(scale: 1.0);
-                  canvasNotifier.updateLayer(updatedLayer);
-                },
-                child: const ListTile(
-                  leading: Icon(Icons.zoom_in_map_rounded),
-                  title: Text('重置缩放'),
-                ),
-              ),
-              PopupMenuItem(
-                enabled: isTransformableLayerSelected,
-                value: () => showModalBottomSheet(
-                  context: context,
-                  builder: (context) => const AlignmentPanel(),
-                ),
-                child: const ListTile(
-                  leading: Icon(Icons.align_horizontal_center_rounded),
-                  title: Text('对齐图层'),
-                ),
-              ),
-              const PopupMenuDivider(),
-              PopupMenuItem(
-                value: () {
-                  showModalBottomSheet(
-                    context: context,
-                    builder: (context) {
-                      return EmojiPicker(
-                        onEmojiSelected: (Category? category, Emoji emoji) {
-                          _addEmojiToCanvas(emoji.emoji, ref);
-                          Navigator.of(context).pop();
-                        },
-                        config: const Config(
-                          emojiViewConfig: EmojiViewConfig(
-                            columns: 8,
-                          ),
-                          categoryViewConfig: CategoryViewConfig(
-                            initCategory: Category.RECENT,
-                          ),
-                          skinToneConfig: SkinToneConfig(),
-                          bottomActionBarConfig: BottomActionBarConfig(
-                            enabled: true,
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-                child: const ListTile(
-                  leading: Icon(Icons.emoji_emotions_outlined),
-                  title: Text('添加表情'),
-                ),
-              ),
-              PopupMenuDivider(),
-              PopupMenuItem(
-                value: () => showModalBottomSheet(
-                  context: context,
-                  builder: (context) => const TemplateSelectorPanel(),
-                ),
-                child: const ListTile(
-                  leading: Icon(Icons.dashboard_customize_outlined),
-                  title: Text('选择模版'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
       drawer: const LayerListPanel(),
       body: SafeArea(
+        // child: RepaintBoundary(key: _canvasKey, child: const CanvasView()),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final canvasState = ref.watch(canvasStateProvider);
@@ -327,150 +214,256 @@ class EditorScreen extends ConsumerWidget {
       ),
       bottomNavigationBar: Builder(
         builder: (context) {
-          final List<Widget> bottomBarContent;
+          // 将按钮定义为变量，使布局代码更清晰
+          final List<Widget> leadingActions = [
+            IconButton(
+              icon: const Icon(Icons.undo),
+              tooltip: '撤销',
+              onPressed: canUndo ? () => canvasNotifier.undo() : null,
+            ),
+            IconButton(
+              icon: const Icon(Icons.redo),
+              tooltip: '重做',
+              onPressed: canRedo ? () => canvasNotifier.redo() : null,
+            ),
+          ];
 
-          if (isTextLayerSelected && selectedLayer is TextLayer) {
-            final textLayer = selectedLayer as TextLayer;
-            bottomBarContent = [
-              Expanded(
-                child: Slider(
-                  value: textLayer.style.fontSize ?? 16.0,
-                  min: 8.0,
-                  max: 200.0,
-                  divisions: 92,
-                  label: (textLayer.style.fontSize ?? 16.0).toStringAsFixed(1),
-                  onChanged: (v) => canvasNotifier.updateLayerLive(textLayer.copyWith(style: textLayer.style.copyWith(fontSize: v))),
-                  onChangeEnd: (v) => canvasNotifier.commitLiveUpdate(),
+          final List<Widget> centerActions = [
+            PopupMenuButton<Function>(
+              icon: const Icon(Icons.add_circle_outline_rounded),
+              tooltip: '添加图层',
+              onSelected: (action) => action(),
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: () => ref
+                      .read(canvasStateProvider.notifier)
+                      .addLayer(TextLayer.initial().copyWith(text: "New Text")),
+                  child: const ListTile(
+                    leading: Icon(Icons.add_box_outlined),
+                    title: Text('添加文本'),
+                  ),
                 ),
-              ),
+                PopupMenuItem(
+                  value: () => ref
+                      .read(canvasStateProvider.notifier)
+                      .addLayer(ShapeLayer.initial()),
+                  child: const ListTile(
+                    leading: Icon(Icons.add_card_outlined),
+                    title: Text('添加形状'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: () => _pickImage(ref),
+                  child: const ListTile(
+                    leading: Icon(Icons.add_photo_alternate_outlined),
+                    title: Text('添加图片'),
+                  ),
+                ),
+              ],
+            ),
+            // 情境编辑按钮
+            if (isLayerSelected)
               IconButton(
-                icon: Icon(Icons.color_lens_outlined, color: textLayer.style.color ?? Colors.black),
-                tooltip: '文本颜色',
+                icon: const Icon(Icons.edit_note_rounded),
+                tooltip: '编辑图层',
                 onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    builder: (context) => SingleChildScrollView(
-                      child: ColorPicker(
-                        pickerColor: textLayer.style.color ?? Colors.black,
-                        onColorChanged: (newColor) {
-                          canvasNotifier.updateLayer(textLayer.copyWith(style: textLayer.style.copyWith(color: newColor)));
-                        },
-                        enableAlpha: true,
-                        labelTypes: const [],
-                        pickerAreaHeightPercent: 0.8,
-                      ),
-                    ),
-                  );
+                  switch (selectedType) {
+                    case SelectedLayerType.text:
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (context) => const TextEditorPanel(),
+                      );
+                      break;
+                    case SelectedLayerType.shape:
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (context) => const ShapeEditorPanel(),
+                      );
+                      break;
+                    default:
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('该图层没有专属编辑选项')),
+                      );
+                      break;
+                  }
                 },
               ),
-              ToggleButtons(
-                isSelected: [
-                  textLayer.textAlign == TextAlign.left,
-                  textLayer.textAlign == TextAlign.center,
-                  textLayer.textAlign == TextAlign.right,
-                ],
-                onPressed: (index) {
-                  final newAlignment = [TextAlign.left, TextAlign.center, TextAlign.right][index];
-                  canvasNotifier.updateLayer(textLayer.copyWith(textAlign: newAlignment));
-                },
-                borderRadius: BorderRadius.circular(8.0),
-                constraints: const BoxConstraints(minHeight: 36, minWidth: 40),
-                children: const [
-                  Icon(Icons.format_align_left, size: 20),
-                  Icon(Icons.format_align_center, size: 20),
-                  Icon(Icons.format_align_right, size: 20),
-                ],
+            IconButton(
+              icon: const Icon(Icons.color_lens_outlined),
+              tooltip: '背景颜色',
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                builder: (context) => const ColorEditorPanel(),
               ),
-            ];
-          } else {
-            bottomBarContent = [
-              PopupMenuButton<Function>(
-                icon: const Icon(Icons.add_circle_outline_rounded),
-                tooltip: '添加图层',
-                onSelected: (action) => action(),
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: () => ref
-                        .read(canvasStateProvider.notifier)
-                        .addLayer(TextLayer.initial().copyWith(text: "New Text")),
-                    child: const ListTile(
-                      leading: Icon(Icons.add_box_outlined),
-                      title: Text('添加文本'),
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: () => ref
-                        .read(canvasStateProvider.notifier)
-                        .addLayer(ShapeLayer.initial()),
-                    child: const ListTile(
-                      leading: Icon(Icons.add_card_outlined),
-                      title: Text('添加形状'),
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: () => _pickImage(ref),
-                    child: const ListTile(
-                      leading: Icon(Icons.add_photo_alternate_outlined),
-                      title: Text('添加图片'),
-                    ),
-                  ),
-                ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.aspect_ratio_outlined),
+              tooltip: '画布尺寸',
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                builder: (context) => const SizeSelectorPanel(),
               ),
-              if (isLayerSelected)
-                IconButton(
-                  icon: const Icon(Icons.edit_note_rounded),
-                  tooltip: '编辑图层',
-                  onPressed: () {
-                    switch (selectedType) {
-                      case SelectedLayerType.text:
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (context) => const TextEditorPanel(),
-                        );
-                        break;
-                      case SelectedLayerType.shape:
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (context) => const ShapeEditorPanel(),
-                        );
-                        break;
-                      default:
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('该图层没有专属编辑选项')),
-                        );
-                        break;
-                    }
-                  },
-                ),
-              IconButton(
-                icon: const Icon(Icons.color_lens_outlined),
-                tooltip: '背景颜色',
-                onPressed: () => showModalBottomSheet(
-                  context: context,
-                  builder: (context) => const ColorEditorPanel(),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.aspect_ratio_outlined),
-                tooltip: '画布尺寸',
-                onPressed: () => showModalBottomSheet(
-                  context: context,
-                  builder: (context) => const SizeSelectorPanel(),
-                ),
-              ),
-            ];
-          }
+            ),
+          ];
 
-          return BottomAppBar(
+          final List<Widget> trailingActions = [
+            PopupMenuButton<Function>(
+              icon: const Icon(Icons.more_vert),
+              tooltip: '更多选项',
+              onSelected: (action) => action(),
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  enabled: isLayerSelected,
+                  value: () {
+                    // 只重置旋转角度
+                    final updatedLayer = selectedLayer!.copyWith(rotation: 0.0);
+                    canvasNotifier.updateLayer(updatedLayer);
+                  },
+                  child: const ListTile(
+                    leading: Icon(Icons.rotate_90_degrees_ccw),
+                    title: Text('重置旋转'),
+                  ),
+                ),
+                PopupMenuItem(
+                  enabled: isLayerSelected,
+                  value: () {
+                    // 只重置缩放比例
+                    final updatedLayer = selectedLayer!.copyWith(scale: 1.0);
+                    canvasNotifier.updateLayer(updatedLayer);
+                  },
+                  child: const ListTile(
+                    leading: Icon(Icons.zoom_in_map_rounded),
+                    title: Text('重置缩放'),
+                  ),
+                ),
+                // highlight-end
+                PopupMenuItem(
+                  enabled: isTransformableLayerSelected,
+                  value: () => showModalBottomSheet(
+                    context: context,
+                    builder: (context) => const AlignmentPanel(),
+                  ),
+                  child: const ListTile(
+                    leading: Icon(Icons.align_horizontal_center_rounded),
+                    title: Text('对齐图层'),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: () => _shareImage(context, ref),
+                  child: const ListTile(
+                    leading: Icon(Icons.share),
+                    title: Text('分享图片'),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: () => _exportImage(context, ref),
+                  child: const ListTile(
+                    leading: Icon(Icons.save_alt_outlined),
+                    title: Text('导出图片'),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: () => Scaffold.of(context).openDrawer(),
+                  child: const ListTile(
+                    leading: Icon(Icons.layers_outlined),
+                    title: Text('图层列表'),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: () {
+                    showModalBottomSheet(
+                      context: context,
+                      builder: (context) {
+                        return EmojiPicker(
+                          onEmojiSelected: (Category? category, Emoji emoji) {
+                            _addEmojiToCanvas(emoji.emoji, ref);
+                            Navigator.of(context).pop();
+                          },
+                          config: const Config(
+                            // All grid-related settings go into EmojiViewConfig
+                            emojiViewConfig: EmojiViewConfig(
+                              columns: 8,
+                              emojiSizeMax: 28.0,
+                              verticalSpacing: 0,
+                              horizontalSpacing: 0,
+                              backgroundColor: Color(0xFFF2F2F2),
+                              recentsLimit: 28,
+                            ),
+                            // All category-related settings go into CategoryViewConfig
+                            categoryViewConfig: CategoryViewConfig(
+                              initCategory: Category.RECENT,
+                              indicatorColor: Colors.blue,
+                              iconColor: Colors.grey,
+                              iconColorSelected: Colors.blue,
+                              backgroundColor: Color(0xFFF2F2F2),
+                              tabIndicatorAnimDuration: kTabScrollDuration,
+                              categoryIcons: CategoryIcons(),
+                            ),
+                            // Skin tone settings
+                            skinToneConfig: SkinToneConfig(
+                              dialogBackgroundColor: Colors.white,
+                              indicatorColor: Colors.grey,
+                            ),
+                            // Bottom action bar settings
+                            bottomActionBarConfig: BottomActionBarConfig(
+                              enabled: true,
+                              showBackspaceButton: true,
+                              backgroundColor: Color(0xFFF2F2F2),
+                              buttonIconColor: Colors.grey,
+                              buttonColor: Colors.transparent,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  child: const ListTile(
+                    leading: Icon(Icons.emoji_emotions_outlined),
+                    title: Text('添加表情'),
+                  ),
+                ),
+                PopupMenuDivider(),
+                PopupMenuItem(
+                  value: () => showModalBottomSheet(
+                    context: context,
+                    builder: (context) => const TemplateSelectorPanel(),
+                  ),
+                  child: const ListTile(
+                    leading: Icon(Icons.dashboard_customize_outlined),
+                    title: Text('选择模版'),
+                  ),
+                ),
+              ],
+            ),
+          ];
+
+          return Container(
             height: 56.0 + MediaQuery.of(context).padding.bottom,
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(context).padding.bottom,
             ),
-            surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
-            elevation: 8.0,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.shadow.withAlpha(51),
+                  blurRadius: 4,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: bottomBarContent,
+              children: <Widget>[
+                ...leadingActions,
+                const Spacer(),
+                ...centerActions,
+                const Spacer(),
+                ...trailingActions,
+              ],
             ),
           );
         },
