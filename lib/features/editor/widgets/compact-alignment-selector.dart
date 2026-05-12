@@ -25,14 +25,20 @@ class CompactAlignmentSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const alignments = [
-      Alignment.topLeft, Alignment.topCenter, Alignment.topRight,
-      Alignment.centerLeft, Alignment.center, Alignment.centerRight,
-      Alignment.bottomLeft, Alignment.bottomCenter, Alignment.bottomRight,
+      Alignment.topLeft,
+      Alignment.topCenter,
+      Alignment.topRight,
+      Alignment.centerLeft,
+      Alignment.center,
+      Alignment.centerRight,
+      Alignment.bottomLeft,
+      Alignment.bottomCenter,
+      Alignment.bottomRight,
     ];
 
-    return  Container(
+    return Container(
       height: 120, // 精确控制高度
-      width: 120,  // 精确控制宽度
+      width: 120, // 精确控制宽度
       child: GridView.count(
         crossAxisCount: 3,
         shrinkWrap: true,
@@ -48,13 +54,19 @@ class CompactAlignmentSelector extends StatelessWidget {
             tooltip: alignment.toString().split('.').last,
             isSelected: isSelected,
             style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
+              backgroundColor: WidgetStateProperty.resolveWith<Color?>((
+                states,
+              ) {
                 if (states.contains(WidgetState.selected)) {
-                  return Theme.of(context).colorScheme.primary.withOpacity(0.2);
+                  return Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2);
                 }
                 return null;
               }),
-              shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              shape: WidgetStateProperty.all(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
             ),
             onPressed: () => onAlignmentSelected(alignment),
           );

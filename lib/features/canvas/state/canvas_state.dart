@@ -67,7 +67,6 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
     }
   }
 
-
   void undo() {
     if (canUndo) {
       _historyIndex--;
@@ -93,7 +92,7 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
     Color? newTextColor;
 
     if (isBackgroundUpdate) {
-      final backgroundLayer = updatedLayer as BackgroundLayer;
+      final backgroundLayer = updatedLayer;
       final Color contrastColorBase =
           (backgroundLayer.gradient is LinearGradient &&
               (backgroundLayer.gradient as LinearGradient).colors.isNotEmpty)
@@ -243,24 +242,59 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
       return layer.copyWith(rect: newRect, scale: newLayerScale);
     }).toList();
     _recordState(state.copyWith(canvasSize: newSize, layers: newLayers));
-
   }
 
   void reorderLayer(int oldIndex, int newIndex) {
-    final layers = List<Layer>.from(state.layers);
-    final realOldIndex = oldIndex + 1;
-    var realNewIndex = newIndex + 1;
-    if (realOldIndex < realNewIndex) {
-      realNewIndex -= 1;
+    final editableLayers = state.layers
+        .where((layer) => layer is! BackgroundLayer)
+        .toList();
+    if (oldIndex < 0 ||
+        oldIndex >= editableLayers.length ||
+        newIndex < 0 ||
+        newIndex > editableLayers.length) {
+      return;
     }
-    final item = layers.removeAt(realOldIndex);
-    if (realOldIndex < realNewIndex) {
-      // 如果向下移动（到更大的索引），移除后，目标索引实际上前移了一位
-      layers.insert(realNewIndex - 1, item);
-    } else {
-      layers.insert(realNewIndex, item);
+
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
     }
-    _recordState(state.copyWith(layers: layers));
+    final layer = editableLayers.removeAt(oldIndex);
+    editableLayers.insert(newIndex, layer);
+
+    _recordState(
+      state.copyWith(
+        layers: [
+          state.layers.firstWhere((layer) => layer is BackgroundLayer),
+          ...editableLayers,
+        ],
+      ),
+    );
+  }
+
+  void reorderLayersTopToBottom(List<String> orderedLayerIds) {
+    final backgroundLayer = state.layers.firstWhereOrNull(
+      (layer) => layer is BackgroundLayer,
+    );
+    if (backgroundLayer == null) return;
+
+    final editableLayers = state.layers
+        .where((layer) => layer is! BackgroundLayer)
+        .toList();
+    if (orderedLayerIds.length != editableLayers.length) return;
+
+    final layersById = {for (final layer in editableLayers) layer.id: layer};
+    final reorderedEditableLayers = <Layer>[];
+    for (final id in orderedLayerIds) {
+      final layer = layersById[id];
+      if (layer == null) return;
+      reorderedEditableLayers.add(layer);
+    }
+
+    _recordState(
+      state.copyWith(
+        layers: [backgroundLayer, ...reorderedEditableLayers.reversed],
+      ),
+    );
   }
 
   /// 对齐图层的方法**
@@ -350,7 +384,12 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
       return;
     }
 
-    final canvasRect = Rect.fromLTWH(0, 0, state.canvasSize.width, state.canvasSize.height);
+    final canvasRect = Rect.fromLTWH(
+      0,
+      0,
+      state.canvasSize.width,
+      state.canvasSize.height,
+    );
     final layerCenter = layer.rect.center;
 
     // 计算需要将中心点移回画布所需的偏移量
@@ -375,11 +414,12 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
     // 使用修正后的图层更新状态并记录历史
     updateLayer(layer);
   }
+
   void applyTemplate(Template template) {
     // 创建新的图层列表，包含模板的背景和内容图层
     final newLayers = [
       template.background,
-      ...template.contentLayers,
+      ...template.contentLayers.where((layer) => layer is! BackgroundLayer),
     ];
 
     _recordState(state.copyWith(layers: newLayers));

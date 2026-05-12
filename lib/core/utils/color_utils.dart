@@ -8,7 +8,10 @@ class ColorUtils {
   static Color getContrastingColor(Color color) {
     // 亮度公式为 0.299*R + 0.587*G + 0.114*B。
     // 使用 128 作为阈值是一种常见的做法。
-    final double luminance = (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue);
+    final red = (color.r * 255).round();
+    final green = (color.g * 255).round();
+    final blue = (color.b * 255).round();
+    final double luminance = (0.299 * red + 0.587 * green + 0.114 * blue);
 
     // 当亮度值大于128时，背景偏亮，应使用黑色文字；否则使用白色文字。
     return luminance > 128 ? Colors.black : Colors.white;

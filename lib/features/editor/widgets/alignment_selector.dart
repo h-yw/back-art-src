@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 class AlignmentSelector extends StatelessWidget {
@@ -40,16 +39,24 @@ class AlignmentSelector extends StatelessWidget {
           child: Container(
             padding: EdgeInsets.zero,
             decoration: BoxDecoration(
-              color: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.2) : null,
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)
+                  : null,
               borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent),
+              border: Border.all(
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.transparent,
+              ),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   _getIconForAlignment(entry.value),
-                  color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurface,
                   size: 28,
                 ),
                 Text(

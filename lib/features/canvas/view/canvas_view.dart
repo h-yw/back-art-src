@@ -1,4 +1,3 @@
-import 'package:BackArt/features/editor/widgets/text_editor_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../editor/view/editor_screen.dart';
@@ -136,18 +135,6 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
 
     return layer.rect.contains(transformedTapPosition);
   }
-
-  double _calculateScale(Size originalSize, Size targetSize) {
-    final double scaleX = targetSize.width / originalSize.width;
-    final double scaleY = targetSize.height / originalSize.height;
-    return min(scaleX, scaleY);
-  }
-
-  // double _calculateScale(Size originalSize, Size targetSize) {
-  //   final double scaleX = targetSize.width / originalSize.width;
-  //   final double scaleY = targetSize.height / originalSize.height;
-  //   return min(scaleX, scaleY);
-  // }
 }
 
 class CanvasPainter extends CustomPainter {
@@ -302,7 +289,7 @@ class CanvasPainter extends CustomPainter {
 
   void _paintShapeLayer(Canvas canvas, ShapeLayer layer) {
     final paint = Paint()
-      ..color = layer.color.withOpacity(layer.opacity)
+      ..color = layer.color.withValues(alpha: layer.opacity)
       ..style = layer.paintStyle;
 
     if (layer.paintStyle == PaintingStyle.stroke) {

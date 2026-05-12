@@ -11,7 +11,6 @@ import 'package:BackArt/features/editor/widgets/shape_editor_panel.dart';
 import 'package:BackArt/features/editor/widgets/size_selector_panel.dart';
 import 'package:BackArt/features/editor/widgets/template_selector_panel.dart';
 import 'package:BackArt/features/editor/widgets/text_editor_panel.dart';
-import 'package:BackArt/features/editor/widgets/unicode_emoji_selector_panel.dart';
 import 'package:BackArt/features/export/service/export_service.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
@@ -183,7 +182,6 @@ class EditorScreen extends ConsumerWidget {
         selectedType == SelectedLayerType.image ||
         selectedType == SelectedLayerType.shape;
 
-    final isTextLayerSelected = selectedLayer is TextLayer;
     final isLayerSelected =
         selectedLayer != null && selectedLayer is! BackgroundLayer;
 
@@ -426,7 +424,7 @@ class EditorScreen extends ConsumerWidget {
                     title: Text('添加表情'),
                   ),
                 ),
-                PopupMenuDivider(),
+                const PopupMenuDivider(),
                 PopupMenuItem(
                   value: () => showModalBottomSheet(
                     context: context,

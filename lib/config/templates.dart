@@ -1,5 +1,3 @@
-// lib/config/templates.dart
-import 'package:BackArt/features/canvas/state/canvas_state.dart';
 import 'package:BackArt/features/canvas/model/layer.dart';
 import 'package:BackArt/config/font_list.dart'; // 引用字体列表
 import 'package:BackArt/utils/gradients.dart'; // 引用渐变生成器
@@ -15,7 +13,7 @@ class Template {
 
 /// 模板函数：空白模版
 /// 特点：
-Template blankTemplate(){
+Template blankTemplate() {
   final background = BackgroundLayer.initial().copyWith(
     color: Colors.white, // 白色背景
   );
@@ -36,7 +34,7 @@ Template blankTemplate(){
 
 /// 模板函数：现代简约风
 /// 特点：纯色背景，居中粗体文本，醒目易读。
-Template modernMinimalistTemplate(){
+Template modernMinimalistTemplate() {
   final background = BackgroundLayer.initial().copyWith(
     color: const Color(0xFFF0F2F5), // 浅灰色背景
   );
@@ -52,13 +50,13 @@ Template modernMinimalistTemplate(){
       letterSpacing: 2.0,
     ),
   );
-  final layers =[textLayer];
+  final layers = [textLayer];
   return Template(background: background, contentLayers: layers);
 }
 
 /// 模板函数：日落渐变诗意风
 /// 特点：美丽的渐变背景，带有描边的诗意文本。
-Template sunsetGradientTemplate(){
+Template sunsetGradientTemplate() {
   final gradientsGenerator = GradientsGenerator();
   gradientsGenerator.generatePaletteColors(2);
   final gradient = LinearGradient(
@@ -85,15 +83,16 @@ Template sunsetGradientTemplate(){
       letterSpacing: 1.0,
     ),
     hasStroke: true,
-    strokeColor: Colors.black.withOpacity(0.5),
+    strokeColor: Colors.black.withValues(alpha: 0.5),
     strokeWidth: 2.5,
   );
   return Template(background: background, contentLayers: [textLayer]);
 }
+
 /// 模板函数：活泼可爱表情风
 /// 特点：多图层组合，包含文本、圆形和表情符号。
-Template playfulEmojiTemplate(){
-  final background =BackgroundLayer.initial().copyWith(
+Template playfulEmojiTemplate() {
+  final background = BackgroundLayer.initial().copyWith(
     color: Colors.yellow.shade100,
   );
   final textLayer = TextLayer.initial().copyWith(
@@ -108,7 +107,7 @@ Template playfulEmojiTemplate(){
   final shapeLayer = ShapeLayer.initial().copyWith(
     shapeType: ShapeType.circle,
     rect: const Rect.fromLTWH(100, 500, 200, 200),
-    color: Colors.pink.shade400.withOpacity(0.8),
+    color: Colors.pink.shade400.withValues(alpha: 0.8),
     paintStyle: PaintingStyle.fill,
   );
   final emojiLayer = TextLayer.initial().copyWith(
@@ -116,12 +115,13 @@ Template playfulEmojiTemplate(){
     rect: const Rect.fromLTWH(350, 450, 150, 150),
     style: const TextStyle(fontSize: 150, backgroundColor: Colors.transparent),
   );
-  final layers=  [textLayer,shapeLayer,emojiLayer];
+  final layers = [textLayer, shapeLayer, emojiLayer];
   return Template(background: background, contentLayers: layers);
 }
+
 /// 模板函数：科技感标题
 /// 特点：深色背景，科幻字体，适合用作标题或口号。
-Template techTitleTemplate(){
+Template techTitleTemplate() {
   final background = BackgroundLayer.initial().copyWith(
     color: const Color(0xFF1E212D), // 深色背景
   );
@@ -139,12 +139,13 @@ Template techTitleTemplate(){
     strokeColor: Colors.blueAccent,
     strokeWidth: 4.0,
   );
-  return Template(background: background, contentLayers:[textLayer]);
+  return Template(background: background, contentLayers: [textLayer]);
 }
+
 /// 模板函数：抽象几何风
 /// 特点：通过多个透明、带描边的形状图层叠加，营造出抽象艺术感。
-Template abstractGeometryTemplate(){
-  final background =BackgroundLayer.initial().copyWith(
+Template abstractGeometryTemplate() {
+  final background = BackgroundLayer.initial().copyWith(
     color: const Color(0xFF1E212D), // 深色背景
   );
 
@@ -167,7 +168,7 @@ Template abstractGeometryTemplate(){
   final circle1 = ShapeLayer.initial().copyWith(
     shapeType: ShapeType.circle,
     rect: const Rect.fromLTWH(-100, -100, 500, 500),
-    color: const Color(0xFFF9F871).withOpacity(0.4),
+    color: const Color(0xFFF9F871).withValues(alpha: 0.4),
     paintStyle: PaintingStyle.stroke,
     strokeWidth: 10.0,
   );
@@ -175,7 +176,7 @@ Template abstractGeometryTemplate(){
   final rectangle1 = ShapeLayer.initial().copyWith(
     shapeType: ShapeType.rectangle,
     rect: const Rect.fromLTWH(600, 600, 400, 400),
-    color: const Color(0xFF66BFBF).withOpacity(0.6),
+    color: const Color(0xFF66BFBF).withValues(alpha: 0.6),
     rotation: 0.5, // 旋转
     paintStyle: PaintingStyle.fill,
   );
@@ -183,17 +184,19 @@ Template abstractGeometryTemplate(){
   final circle2 = ShapeLayer.initial().copyWith(
     shapeType: ShapeType.circle,
     rect: const Rect.fromLTWH(800, 1200, 400, 400),
-    color: const Color(0xFFFFA384).withOpacity(0.7),
+    color: const Color(0xFFFFA384).withValues(alpha: 0.7),
     paintStyle: PaintingStyle.fill,
     scale: 0.8, // 缩放
   );
-  return Template(background: background, contentLayers:  [circle1, rectangle1, circle2, mainText]);
+  return Template(
+    background: background,
+    contentLayers: [circle1, rectangle1, circle2, mainText],
+  );
 }
-
 
 /// 模板函数：复古海报风
 /// 特点：通过色彩、字体和布局营造出怀旧的胶片海报感。
-Template retroPosterTemplate(){
+Template retroPosterTemplate() {
   final background = BackgroundLayer.initial().copyWith(
     color: const Color(0xFFFFF7E6), // 暖黄色复古背景
   );
@@ -222,7 +225,7 @@ Template retroPosterTemplate(){
       height: 1.0,
     ),
     hasStroke: true,
-    strokeColor: Colors.black.withOpacity(0.2),
+    strokeColor: Colors.black.withValues(alpha: 0.2),
     strokeWidth: 1.5,
   );
 
@@ -236,18 +239,18 @@ Template retroPosterTemplate(){
     isVisible: true,
     isLocked: false,
   );
-  return Template(background: background, contentLayers: [background, decorativeShape, largeText, subText]);
+  return Template(
+    background: background,
+    contentLayers: [decorativeShape, largeText, subText],
+  );
 }
 
 /// 模板函数：赛博朋克风
 /// 特点：深色背景、霓虹色调、未来感字体和错位效果。
-Template cyberpunkTemplate(){
+Template cyberpunkTemplate() {
   final background = BackgroundLayer.initial().copyWith(
     gradient: LinearGradient(
-      colors: [
-        const Color(0xFF0D0D1A),
-        const Color(0xFF1C1C30),
-      ],
+      colors: [const Color(0xFF0D0D1A), const Color(0xFF1C1C30)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
@@ -266,7 +269,7 @@ Template cyberpunkTemplate(){
       letterSpacing: 10.0,
     ),
     hasStroke: true,
-    strokeColor: Colors.black.withOpacity(0.2),
+    strokeColor: Colors.black.withValues(alpha: 0.2),
     strokeWidth: 4.0,
     rotation: -0.1,
   );
@@ -277,7 +280,7 @@ Template cyberpunkTemplate(){
     rect: const Rect.fromLTWH(205, 805, 600, 200),
     style: TextStyle(
       fontSize: 140,
-      color: const Color(0xFFFF00B3).withOpacity(0.6), // 霓虹粉色
+      color: const Color(0xFFFF00B3).withValues(alpha: 0.6), // 霓虹粉色
       fontFamily: AppFonts.lxgwBright,
       fontWeight: FontWeight.w900,
       height: 1.0,
@@ -294,16 +297,20 @@ Template cyberpunkTemplate(){
     rotation: -0.1,
   );
 
-  return Template(background: background, contentLayers: [background, mainText, glitchText, shapeLine]);
+  return Template(
+    background: background,
+    contentLayers: [mainText, glitchText, shapeLine],
+  );
 }
+
 enum TemplateEnum {
   modern(modernMinimalistTemplate, '现代简约'),
   sunset(sunsetGradientTemplate, '日落渐变'),
   emoji(playfulEmojiTemplate, '活泼可爱'),
   tech(techTitleTemplate, '科技感标题'),
-  abstract(abstractGeometryTemplate,'抽象几何风'),
-  retro(retroPosterTemplate,'复古海报风'),
-  cyberpunk(cyberpunkTemplate,'赛博朋克风'),
+  abstract(abstractGeometryTemplate, '抽象几何风'),
+  retro(retroPosterTemplate, '复古海报风'),
+  cyberpunk(cyberpunkTemplate, '赛博朋克风'),
   blank(blankTemplate, '空白模版');
 
   final Template Function() builder;

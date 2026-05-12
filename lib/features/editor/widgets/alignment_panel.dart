@@ -1,5 +1,4 @@
 import 'package:BackArt/features/canvas/state/canvas_state.dart';
-import 'package:BackArt/features/editor/widgets/text_editor_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,17 +14,6 @@ class AlignmentPanel extends ConsumerWidget {
     if (selectedLayerId == null) {
       return const Center(child: Text("Please select a layer to align."));
     }
-
-    final alignments = {
-      // Horizontal
-      'Align Left': Alignment.centerLeft,
-      'Align Horizontal Center': Alignment.center,
-      'Align Right': Alignment.centerRight,
-      // Vertical
-      'Align Top': Alignment.topCenter,
-      'Align Vertical Center': Alignment.center,
-      'Align Bottom': Alignment.bottomCenter,
-    };
 
     final horizontalAlignments = {
       Icons.align_horizontal_left: Alignment.centerLeft,
@@ -47,16 +35,33 @@ class AlignmentPanel extends ConsumerWidget {
         children: [
           Text('Align Layer', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
-          _buildAlignmentRow(context, ref, selectedLayerId, 'Horizontal', horizontalAlignments),
+          _buildAlignmentRow(
+            context,
+            ref,
+            selectedLayerId,
+            'Horizontal',
+            horizontalAlignments,
+          ),
           const SizedBox(height: 16),
-          _buildAlignmentRow(context, ref, selectedLayerId, 'Vertical', verticalAlignments),
+          _buildAlignmentRow(
+            context,
+            ref,
+            selectedLayerId,
+            'Vertical',
+            verticalAlignments,
+          ),
         ],
       ),
     );
   }
 
   Widget _buildAlignmentRow(
-      BuildContext context, WidgetRef ref, String layerId, String title, Map<IconData, Alignment> alignments) {
+    BuildContext context,
+    WidgetRef ref,
+    String layerId,
+    String title,
+    Map<IconData, Alignment> alignments,
+  ) {
     final isHorizontal = title == 'Horizontal'; // 判断当前是水平还是垂直行
 
     return Column(

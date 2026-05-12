@@ -1,6 +1,5 @@
 import 'package:BackArt/features/canvas/model/layer.dart';
 import 'package:BackArt/features/canvas/state/canvas_state.dart';
-import 'package:BackArt/features/editor/widgets/text_editor_panel.dart';
 import 'package:BackArt/widgets/slide_picker/slide_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -48,8 +47,9 @@ class ShapeEditorPanel extends ConsumerWidget {
                 onPressed: (index) {
                   canvasNotifier.updateLayer(
                     shapeLayer.copyWith(
-                      shapeType:
-                      index == 0 ? ShapeType.rectangle : ShapeType.circle,
+                      shapeType: index == 0
+                          ? ShapeType.rectangle
+                          : ShapeType.circle,
                     ),
                   );
                 },
@@ -119,11 +119,11 @@ class ShapeEditorPanel extends ConsumerWidget {
               context,
               title: 'Stroke Width',
               child: Slider(
-                value: (shapeLayer.strokeWidth??2.0),
+                value: (shapeLayer.strokeWidth ?? 2.0),
                 min: 1.0,
                 max: 50.0,
                 divisions: 49,
-                label: (shapeLayer.strokeWidth??2.0).round().toString(),
+                label: (shapeLayer.strokeWidth ?? 2.0).round().toString(),
                 onChanged: (newWidth) {
                   canvasNotifier.updateLayerLive(
                     shapeLayer.copyWith(strokeWidth: newWidth),

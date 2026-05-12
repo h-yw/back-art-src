@@ -1,10 +1,9 @@
-// lib/features/editor/widgets/template_selector_panel.dart
-import 'package:BackArt/features/canvas/state/canvas_state.dart';
 import 'package:BackArt/config/templates.dart'; // 导入模板函数
+import 'package:BackArt/features/canvas/model/layer.dart';
+import 'package:BackArt/features/canvas/state/canvas_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../canvas/model/layer.dart';
 import '../view/editor_screen.dart';
 
 class TemplateSelectorPanel extends ConsumerWidget {
@@ -41,6 +40,13 @@ class TemplateSelectorPanel extends ConsumerWidget {
                   onTap: () {
                     final templateContent = entry.value();
                     canvasNotifier.applyTemplate(templateContent);
+                    final firstEditableLayer = templateContent.contentLayers
+                        .firstWhere(
+                          (layer) => layer is! BackgroundLayer,
+                          orElse: () => templateContent.background,
+                        );
+                    ref.read(selectedLayerProvider.notifier).state =
+                        firstEditableLayer.id;
                     Navigator.of(context).pop();
                   },
                 );

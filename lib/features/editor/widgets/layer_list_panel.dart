@@ -1,6 +1,5 @@
 import 'package:BackArt/features/canvas/model/layer.dart';
 import 'package:BackArt/features/canvas/state/canvas_state.dart';
-import 'package:BackArt/features/editor/widgets/text_editor_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -44,8 +43,11 @@ class LayerListPanel extends ConsumerWidget {
 
     final backgroundLayer = layers[0] as BackgroundLayer;
 
-    final reorderableLayers =
-    layers.where((l) => l is! BackgroundLayer).toList().reversed.toList();
+    final reorderableLayers = layers
+        .where((l) => l is! BackgroundLayer)
+        .toList()
+        .reversed
+        .toList();
 
     return Drawer(
       child: SafeArea(
@@ -110,9 +112,20 @@ class LayerListPanel extends ConsumerWidget {
                   );
                 },
                 onReorder: (oldIndex, newIndex) {
-                  final layer = reorderableLayers[oldIndex];
+                  final reorderedLayers = List<Layer>.from(reorderableLayers);
+                  final layer = reorderedLayers[oldIndex];
                   if (layer.isLocked) return;
-                  canvasNotifier.reorderLayer(oldIndex, newIndex);
+
+                  if (oldIndex < newIndex) {
+                    newIndex -= 1;
+                  }
+                  reorderedLayers
+                    ..removeAt(oldIndex)
+                    ..insert(newIndex, layer);
+
+                  canvasNotifier.reorderLayersTopToBottom(
+                    reorderedLayers.map((layer) => layer.id).toList(),
+                  );
                 },
               ),
             ),

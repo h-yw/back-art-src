@@ -3,7 +3,6 @@
 import 'package:BackArt/config/font_list.dart';
 import 'package:BackArt/features/canvas/model/layer.dart';
 import 'package:BackArt/features/canvas/state/canvas_state.dart';
-import 'package:BackArt/features/editor/widgets/alignment_selector.dart';
 import 'package:BackArt/features/editor/widgets/compact-alignment-selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -22,16 +21,26 @@ import '../view/editor_screen.dart';
 
 FontWeight _sliderValueToFontWeight(double value) {
   switch (value.round()) {
-    case 1: return FontWeight.w100;
-    case 2: return FontWeight.w200;
-    case 3: return FontWeight.w300;
-    case 4: return FontWeight.w400;
-    case 5: return FontWeight.w500;
-    case 6: return FontWeight.w600;
-    case 7: return FontWeight.w700;
-    case 8: return FontWeight.w800;
-    case 9: return FontWeight.w900;
-    default: return FontWeight.w400; // 默认为常规
+    case 1:
+      return FontWeight.w100;
+    case 2:
+      return FontWeight.w200;
+    case 3:
+      return FontWeight.w300;
+    case 4:
+      return FontWeight.w400;
+    case 5:
+      return FontWeight.w500;
+    case 6:
+      return FontWeight.w600;
+    case 7:
+      return FontWeight.w700;
+    case 8:
+      return FontWeight.w800;
+    case 9:
+      return FontWeight.w900;
+    default:
+      return FontWeight.w400; // 默认为常规
   }
 }
 
@@ -42,7 +51,6 @@ double _fontWeightToSliderValue(FontWeight? weight) {
   return (FontWeight.values.indexOf(weight) + 1).toDouble();
 }
 
-
 class TextEditorPanel extends ConsumerWidget {
   const TextEditorPanel({Key? key}) : super(key: key);
 
@@ -51,10 +59,13 @@ class TextEditorPanel extends ConsumerWidget {
     final selectedLayerId = ref.watch(selectedLayerProvider);
     final canvasNotifier = ref.read(canvasStateProvider.notifier);
 
-    final layer = ref.watch(canvasStateProvider).layers.firstWhere(
+    final layer = ref
+        .watch(canvasStateProvider)
+        .layers
+        .firstWhere(
           (l) => l.id == selectedLayerId,
-      orElse: () => TextLayer.initial(),
-    );
+          orElse: () => TextLayer.initial(),
+        );
 
     // 如果选中的不是文本图层，则不显示任何内容
     if (layer is! TextLayer) {
@@ -69,7 +80,10 @@ class TextEditorPanel extends ConsumerWidget {
       children: [
         // --- 第一组：内容与字体 ---
         ExpansionTile(
-          title: const Text('内容与字体', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: const Text(
+            '内容与字体',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           initiallyExpanded: true, // 默认展开
           children: [
             _buildSectionPadding(
@@ -82,7 +96,9 @@ class TextEditorPanel extends ConsumerWidget {
                 maxLines: 3,
                 minLines: 1,
                 onChanged: (newText) {
-                  canvasNotifier.updateLayerLive(textLayer.copyWith(text: newText));
+                  canvasNotifier.updateLayerLive(
+                    textLayer.copyWith(text: newText),
+                  );
                 },
                 onEditingComplete: () {
                   canvasNotifier.commitLiveUpdate();
@@ -95,23 +111,34 @@ class TextEditorPanel extends ConsumerWidget {
                 decoration: const InputDecoration(
                   labelText: '字体',
                   border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
                 isExpanded: true,
-                value: AppFonts.fontNameList.contains(textLayer.style.fontFamily)
+                value:
+                    AppFonts.fontNameList.contains(textLayer.style.fontFamily)
                     ? textLayer.style.fontFamily
                     : AppFonts.fontNameList.first,
                 onChanged: (newFontFamily) {
                   if (newFontFamily != null) {
                     canvasNotifier.updateLayer(
-                      textLayer.copyWith(style: textLayer.style.copyWith(fontFamily: newFontFamily)),
+                      textLayer.copyWith(
+                        style: textLayer.style.copyWith(
+                          fontFamily: newFontFamily,
+                        ),
+                      ),
                     );
                   }
                 },
                 items: AppFonts.fontNameList.map((font) {
                   return DropdownMenuItem(
                     value: font,
-                    child: Text(font, style: TextStyle(fontFamily: font, fontSize: 16)),
+                    child: Text(
+                      font,
+                      style: TextStyle(fontFamily: font, fontSize: 16),
+                    ),
                   );
                 }).toList(),
               ),
@@ -123,7 +150,11 @@ class TextEditorPanel extends ConsumerWidget {
               min1: 8.0,
               max1: 200.0,
               divisions1: 92,
-              onChanged1: (v) => canvasNotifier.updateLayerLive(textLayer.copyWith(style: textLayer.style.copyWith(fontSize: v))),
+              onChanged1: (v) => canvasNotifier.updateLayerLive(
+                textLayer.copyWith(
+                  style: textLayer.style.copyWith(fontSize: v),
+                ),
+              ),
               onChangeEnd1: (v) => canvasNotifier.commitLiveUpdate(),
               label2: '字重',
               value2: _fontWeightToSliderValue(textLayer.style.fontWeight),
@@ -132,7 +163,11 @@ class TextEditorPanel extends ConsumerWidget {
               divisions2: 8,
               onChanged2: (v) {
                 final newWeight = _sliderValueToFontWeight(v);
-                canvasNotifier.updateLayerLive(textLayer.copyWith(style: textLayer.style.copyWith(fontWeight: newWeight)));
+                canvasNotifier.updateLayerLive(
+                  textLayer.copyWith(
+                    style: textLayer.style.copyWith(fontWeight: newWeight),
+                  ),
+                );
               },
               onChangeEnd2: (v) => canvasNotifier.commitLiveUpdate(),
             ),
@@ -141,26 +176,41 @@ class TextEditorPanel extends ConsumerWidget {
 
         // --- 第二组：颜色与样式 ---
         ExpansionTile(
-          title: const Text('颜色与样式', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: const Text(
+            '颜色与样式',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           initiallyExpanded: true,
           children: [
             ListTile(
-              title: Text('文本颜色', style: Theme.of(context).textTheme.titleMedium),
+              title: Text(
+                '文本颜色',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
             _buildSectionPadding(
               child: SlidePicker(
                 pickerColor: textLayer.style.color ?? Colors.black,
                 onColorChanged: (newColor) {
-                  canvasNotifier.updateLayer(textLayer.copyWith(style: textLayer.style.copyWith(color: newColor)));
+                  canvasNotifier.updateLayer(
+                    textLayer.copyWith(
+                      style: textLayer.style.copyWith(color: newColor),
+                    ),
+                  );
                 },
               ),
             ),
             const Divider(),
             SwitchListTile(
-              title: Text('启用描边', style: Theme.of(context).textTheme.titleMedium),
+              title: Text(
+                '启用描边',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               value: textLayer.hasStroke,
               onChanged: (isEnabled) {
-                canvasNotifier.updateLayer(textLayer.copyWith(hasStroke: isEnabled));
+                canvasNotifier.updateLayer(
+                  textLayer.copyWith(hasStroke: isEnabled),
+                );
               },
             ),
             if (textLayer.hasStroke) ...[
@@ -172,30 +222,40 @@ class TextEditorPanel extends ConsumerWidget {
                 max: 20.0,
                 divisions: 39,
                 onChanged: (newWidth) {
-                  canvasNotifier.updateLayerLive(textLayer.copyWith(strokeWidth: newWidth));
+                  canvasNotifier.updateLayerLive(
+                    textLayer.copyWith(strokeWidth: newWidth),
+                  );
                 },
                 onChangeEnd: (newWidth) {
                   canvasNotifier.commitLiveUpdate();
                 },
               ),
               ListTile(
-                title: Text('描边颜色', style: Theme.of(context).textTheme.titleMedium),
+                title: Text(
+                  '描边颜色',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
               _buildSectionPadding(
                 child: SlidePicker(
                   pickerColor: textLayer.strokeColor,
                   onColorChanged: (newColor) {
-                    canvasNotifier.updateLayer(textLayer.copyWith(strokeColor: newColor));
+                    canvasNotifier.updateLayer(
+                      textLayer.copyWith(strokeColor: newColor),
+                    );
                   },
                 ),
               ),
-            ]
+            ],
           ],
         ),
 
         // --- 第三组：布局与对齐 ---
         ExpansionTile(
-          title: const Text('布局与对齐', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: const Text(
+            '布局与对齐',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           initiallyExpanded: true,
           children: [
             _buildCompactSliderRow(
@@ -205,18 +265,27 @@ class TextEditorPanel extends ConsumerWidget {
               min1: 0.5,
               max1: 4.0,
               divisions1: 35,
-              onChanged1: (v) => canvasNotifier.updateLayerLive(textLayer.copyWith(style: textLayer.style.copyWith(height: v))),
+              onChanged1: (v) => canvasNotifier.updateLayerLive(
+                textLayer.copyWith(style: textLayer.style.copyWith(height: v)),
+              ),
               onChangeEnd1: (v) => canvasNotifier.commitLiveUpdate(),
               label2: '字距',
               value2: textLayer.style.letterSpacing ?? 0.0,
               min2: -5.0,
               max2: 20.0,
               divisions2: 50,
-              onChanged2: (v) => canvasNotifier.updateLayerLive(textLayer.copyWith(style: textLayer.style.copyWith(letterSpacing: v))),
+              onChanged2: (v) => canvasNotifier.updateLayerLive(
+                textLayer.copyWith(
+                  style: textLayer.style.copyWith(letterSpacing: v),
+                ),
+              ),
               onChangeEnd2: (v) => canvasNotifier.commitLiveUpdate(),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
               child: Row(
                 children: [
                   // --- 文本对齐 ---
@@ -224,7 +293,10 @@ class TextEditorPanel extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('文本对齐', style: Theme.of(context).textTheme.labelLarge),
+                        Text(
+                          '文本对齐',
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
                         const SizedBox(height: 8),
                         ToggleButtons(
                           isSelected: [
@@ -233,11 +305,20 @@ class TextEditorPanel extends ConsumerWidget {
                             textLayer.textAlign == TextAlign.right,
                           ],
                           onPressed: (index) {
-                            final newAlignment = [TextAlign.left, TextAlign.center, TextAlign.right][index];
-                            canvasNotifier.updateLayer(textLayer.copyWith(textAlign: newAlignment));
+                            final newAlignment = [
+                              TextAlign.left,
+                              TextAlign.center,
+                              TextAlign.right,
+                            ][index];
+                            canvasNotifier.updateLayer(
+                              textLayer.copyWith(textAlign: newAlignment),
+                            );
                           },
                           borderRadius: BorderRadius.circular(8.0),
-                          constraints: const BoxConstraints(minHeight: 36, minWidth: 40), // 紧凑约束
+                          constraints: const BoxConstraints(
+                            minHeight: 36,
+                            minWidth: 40,
+                          ), // 紧凑约束
                           children: const [
                             Icon(Icons.format_align_left, size: 20),
                             Icon(Icons.format_align_center, size: 20),
@@ -253,12 +334,18 @@ class TextEditorPanel extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('布局对齐', style: Theme.of(context).textTheme.labelLarge),
+                        Text(
+                          '布局对齐',
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
                         const SizedBox(height: 8),
                         CompactAlignmentSelector(
-                          selectedAlignment: textLayer.alignment?? Alignment.center,
+                          selectedAlignment:
+                              textLayer.alignment ?? Alignment.center,
                           onAlignmentSelected: (alignment) {
-                            canvasNotifier.updateLayer(textLayer.copyWith(alignment: alignment));
+                            canvasNotifier.updateLayer(
+                              textLayer.copyWith(alignment: alignment),
+                            );
                           },
                         ),
                       ],
@@ -307,22 +394,22 @@ class TextEditorPanel extends ConsumerWidget {
   }
 
   Widget _buildCompactSliderRow(
-      BuildContext context, {
-        required String label1,
-        required double value1,
-        required double min1,
-        required double max1,
-        required int divisions1,
-        required ValueChanged<double> onChanged1,
-        required ValueChanged<double> onChangeEnd1,
-        required String label2,
-        required double value2,
-        required double min2,
-        required double max2,
-        required int divisions2,
-        required ValueChanged<double> onChanged2,
-        required ValueChanged<double> onChangeEnd2,
-      }) {
+    BuildContext context, {
+    required String label1,
+    required double value1,
+    required double min1,
+    required double max1,
+    required int divisions1,
+    required ValueChanged<double> onChanged1,
+    required ValueChanged<double> onChangeEnd1,
+    required String label2,
+    required double value2,
+    required double min2,
+    required double max2,
+    required int divisions2,
+    required ValueChanged<double> onChanged2,
+    required ValueChanged<double> onChangeEnd2,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 0),
       child: Row(
@@ -363,69 +450,6 @@ class TextEditorPanel extends ConsumerWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-class _CompactAlignmentSelector extends StatelessWidget {
-  const _CompactAlignmentSelector({
-    required this.selectedAlignment,
-    required this.onAlignmentSelected,
-  });
-
-  final Alignment? selectedAlignment;
-  final ValueChanged<Alignment> onAlignmentSelected;
-
-  IconData _getIconForAlignment(Alignment alignment) {
-    if (alignment == Alignment.topLeft) return Icons.north_west_rounded;
-    if (alignment == Alignment.topCenter) return Icons.north_rounded;
-    if (alignment == Alignment.topRight) return Icons.north_east_rounded;
-    if (alignment == Alignment.centerLeft) return Icons.west_rounded;
-    if (alignment == Alignment.center) return Icons.center_focus_strong_rounded;
-    if (alignment == Alignment.centerRight) return Icons.east_rounded;
-    if (alignment == Alignment.bottomLeft) return Icons.south_west_rounded;
-    if (alignment == Alignment.bottomCenter) return Icons.south_rounded;
-    if (alignment == Alignment.bottomRight) return Icons.south_east_rounded;
-    return Icons.place;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const alignments = [
-      Alignment.topLeft, Alignment.topCenter, Alignment.topRight,
-      Alignment.centerLeft, Alignment.center, Alignment.centerRight,
-      Alignment.bottomLeft, Alignment.bottomCenter, Alignment.bottomRight,
-    ];
-
-    return  Container(
-      height: 120, // 精确控制高度
-      width: 120,  // 精确控制宽度
-      child: GridView.count(
-        crossAxisCount: 3,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 2, // 减小间距
-        crossAxisSpacing: 2, // 减小间距
-        children: alignments.map((alignment) {
-          final isSelected = selectedAlignment == alignment;
-          return IconButton(
-            iconSize: 20, // 减小图标大小
-            visualDensity: VisualDensity.compact, // 减小按钮的视觉密度
-            icon: Icon(_getIconForAlignment(alignment)),
-            tooltip: alignment.toString().split('.').last,
-            isSelected: isSelected,
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return Theme.of(context).colorScheme.primary.withOpacity(0.2);
-                }
-                return null;
-              }),
-              shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-            ),
-            onPressed: () => onAlignmentSelected(alignment),
-          );
-        }).toList(),
       ),
     );
   }
