@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:BackArt/config/templates.dart';
 import 'package:BackArt/features/canvas/data/canvas_draft_repository.dart';
@@ -13,6 +14,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  Future<ui.Image> createTestImage() async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final paint = Paint()..color = Colors.blue;
+    canvas.drawRect(const Rect.fromLTWH(0, 0, 40, 40), paint);
+    final picture = recorder.endRecording();
+    return picture.toImage(40, 40);
+  }
+
   Widget buildCanvasTestApp(ProviderContainer container) {
     return UncontrolledProviderScope(
       container: container,
@@ -271,5 +281,36 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('模板'), findsOneWidget);
+  });
+
+  testWidgets('image layers expose the image editor as the primary action', (
+    tester,
+  ) async {
+    final image = await createTestImage();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          initialCanvasStateProvider.overrideWithValue(
+            CanvasState(
+              layers: [
+                const BackgroundLayer(id: 'background'),
+                ImageLayer(id: 'image', image: image),
+              ],
+            ),
+          ),
+        ],
+        child: const BackArtApp(),
+      ),
+    );
+
+    expect(find.text('图片'), findsOneWidget);
+
+    await tester.tap(find.text('图片'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('编辑图片'), findsOneWidget);
+    expect(find.text('替换图片'), findsOneWidget);
+    expect(find.text('透明度'), findsOneWidget);
   });
 }

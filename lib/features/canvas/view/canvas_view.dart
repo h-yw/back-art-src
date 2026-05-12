@@ -352,7 +352,10 @@ class CanvasPainter extends CustomPainter {
         layer.image.height.toDouble(),
       ),
       targetRect,
-      Paint(),
+      Paint()
+        ..color = Colors.white.withValues(alpha: layer.opacity)
+        ..filterQuality = FilterQuality.high
+        ..blendMode = BlendMode.modulate,
     );
   }
 

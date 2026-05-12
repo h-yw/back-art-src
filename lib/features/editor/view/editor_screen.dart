@@ -7,6 +7,7 @@ import 'package:BackArt/features/canvas/view/canvas_view.dart';
 import 'package:BackArt/features/editor/state/editor_state.dart';
 import 'package:BackArt/features/editor/widgets/alignment_panel.dart';
 import 'package:BackArt/features/editor/widgets/color_editor_panel.dart';
+import 'package:BackArt/features/editor/widgets/image_editor_panel.dart';
 import 'package:BackArt/features/editor/widgets/layer_list_panel.dart';
 import 'package:BackArt/features/editor/widgets/shape_editor_panel.dart';
 import 'package:BackArt/features/editor/widgets/size_selector_panel.dart';
@@ -367,6 +368,13 @@ class EditorScreen extends ConsumerWidget {
     );
   }
 
+  void _showImageEditor(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => const ImageEditorPanel(),
+    );
+  }
+
   void _showAlignmentEditor(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -574,6 +582,15 @@ class EditorScreen extends ConsumerWidget {
         );
         break;
       case SelectedLayerType.image:
+        actions.add(
+          _ToolbarAction(
+            icon: Icons.tune_rounded,
+            label: '图片',
+            onPressed: () => _showImageEditor(context),
+            isPrimary: true,
+          ),
+        );
+        break;
       case SelectedLayerType.background:
       case SelectedLayerType.none:
         break;
