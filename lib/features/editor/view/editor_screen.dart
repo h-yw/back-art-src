@@ -36,11 +36,54 @@ class _ToolbarAction {
   final bool isDestructive;
 }
 
+enum _PublishAction { save, share }
+
+class _PublishPreset {
+  const _PublishPreset({
+    required this.title,
+    required this.subtitle,
+    required this.pixelRatio,
+    required this.icon,
+  });
+
+  final String title;
+  final String subtitle;
+  final double pixelRatio;
+  final IconData icon;
+}
+
+class _PublishRequest {
+  const _PublishRequest({required this.action, required this.preset});
+
+  final _PublishAction action;
+  final _PublishPreset preset;
+}
+
 class EditorScreen extends ConsumerWidget {
   EditorScreen({Key? key}) : super(key: key);
 
   // A GlobalKey is needed to access the RepaintBoundary
   final GlobalKey _canvasKey = GlobalKey();
+  static const List<_PublishPreset> _publishPresets = [
+    _PublishPreset(
+      title: '快速分享',
+      subtitle: '1.5x · 速度更快，适合聊天和预览',
+      pixelRatio: 1.5,
+      icon: Icons.flash_on_outlined,
+    ),
+    _PublishPreset(
+      title: '高清',
+      subtitle: '3x · 质量和速度更均衡',
+      pixelRatio: 3.0,
+      icon: Icons.high_quality_outlined,
+    ),
+    _PublishPreset(
+      title: '打印级',
+      subtitle: '5x · 适合海报和高分辨率屏幕',
+      pixelRatio: 5.0,
+      icon: Icons.workspace_premium_outlined,
+    ),
+  ];
 
   Future<void> _pickImage(WidgetRef ref) async {
     final picker = ImagePicker();
@@ -60,86 +103,241 @@ class EditorScreen extends ConsumerWidget {
     return frame.image;
   }
 
-  void _exportImage(BuildContext context, WidgetRef ref) async {
-    // 弹出分辨率选择对话框
-    final double? selectedPixelRatio = await showDialog<double>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('选择导出分辨率'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('标准 (Standard)'),
-              subtitle: const Text('适用于快速分享'),
-              onTap: () => Navigator.of(context).pop(1.0), // 1x 分辨率
-            ),
-            ListTile(
-              title: const Text('高清 (HD)'),
-              subtitle: const Text('推荐，质量与速度均衡'),
-              onTap: () => Navigator.of(context).pop(3.0), // 3x 分辨率
-            ),
-            ListTile(
-              title: const Text('超清 (4K+)'),
-              subtitle: const Text('适用于打印或超高清屏幕'),
-              onTap: () => Navigator.of(context).pop(5.0), // 5x 分辨率
-            ),
-          ],
-        ),
-      ),
-    );
-
-    // 如果用户没有选择（例如点击了对话框外部），则不执行任何操作
-    if (selectedPixelRatio == null) return;
-
-    // -- 后续的导出逻辑 --
+  Future<Uint8List?> _captureCanvasWithoutSelection(
+    WidgetRef ref, {
+    required double pixelRatio,
+  }) async {
     final originalSelectedId = ref.read(selectedLayerProvider);
     ref.read(selectedLayerProvider.notifier).state = null;
 
-    await Future.delayed(const Duration(milliseconds: 50));
-
-    final service = ExportService();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
-
-    // 使用用户选择的 pixelRatio 进行保存
-    final success = await service.saveCanvas(
-      _canvasKey,
-      pixelRatio: selectedPixelRatio,
-    );
-    Navigator.of(context).pop();
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(success ? '已保存到相册!' : '保存失败.')));
-
-    ref.read(selectedLayerProvider.notifier).state = originalSelectedId;
+    try {
+      await Future.delayed(const Duration(milliseconds: 50));
+      final service = ExportService();
+      return await service.captureCanvasPng(_canvasKey, pixelRatio: pixelRatio);
+    } finally {
+      ref.read(selectedLayerProvider.notifier).state = originalSelectedId;
+    }
   }
 
-  void _shareImage(BuildContext context, WidgetRef ref) async {
-    final originalSelectedId = ref.read(selectedLayerProvider);
-    ref.read(selectedLayerProvider.notifier).state = null;
+  Future<void> _publishCanvas(BuildContext context, WidgetRef ref) async {
+    final request = await _showPublishSheet(context, ref);
+    if (request == null || !context.mounted) {
+      return;
+    }
 
-    await Future.delayed(const Duration(milliseconds: 50));
-
-    final service = ExportService();
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
+      builder: (dialogContext) =>
+          const Center(child: CircularProgressIndicator()),
     );
 
-    await service.shareCanvas(
-      _canvasKey,
-      pixelRatio: 3.0, // 分享时使用 3x 分辨率
+    final bytes = await _captureCanvasWithoutSelection(
+      ref,
+      pixelRatio: request.preset.pixelRatio,
     );
 
-    Navigator.of(context).pop();
+    if (context.mounted) {
+      Navigator.of(context).pop();
+    }
 
-    ref.read(selectedLayerProvider.notifier).state = originalSelectedId;
+    if (!context.mounted) {
+      return;
+    }
+
+    if (bytes == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('导出失败，请重试。')));
+      return;
+    }
+
+    final service = ExportService();
+    final success = switch (request.action) {
+      _PublishAction.save => await service.savePngBytes(bytes),
+      _PublishAction.share => await service.sharePngBytes(bytes),
+    };
+
+    if (!context.mounted) {
+      return;
+    }
+
+    final message = switch (request.action) {
+      _PublishAction.save => success ? '已保存到相册。' : '保存失败，请重试。',
+      _PublishAction.share => success ? '已打开分享面板。' : '分享失败，请重试。',
+    };
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<_PublishRequest?> _showPublishSheet(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final canvasSize = ref.read(
+      canvasStateProvider.select((state) => state.canvasSize),
+    );
+    return showModalBottomSheet<_PublishRequest>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        var selectedPreset = _publishPresets[1];
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return SafeArea(
+              child: FractionallySizedBox(
+                heightFactor: 0.8,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '发布画布',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '当前尺寸 ${canvasSize.width.round()} x ${canvasSize.height.round()}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (final preset in _publishPresets)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(14),
+                                      onTap: () => setState(
+                                        () => selectedPreset = preset,
+                                      ),
+                                      child: Ink(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          border: Border.all(
+                                            color: preset == selectedPreset
+                                                ? Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary
+                                                : Theme.of(
+                                                    context,
+                                                  ).colorScheme.outlineVariant,
+                                            width: preset == selectedPreset
+                                                ? 2
+                                                : 1,
+                                          ),
+                                          color: preset == selectedPreset
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.primaryContainer
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.surface,
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(14),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: 40,
+                                                height: 40,
+                                                decoration: BoxDecoration(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .secondaryContainer,
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: Icon(preset.icon),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      preset.title,
+                                                      style: Theme.of(
+                                                        context,
+                                                      ).textTheme.titleMedium,
+                                                    ),
+                                                    Text(
+                                                      preset.subtitle,
+                                                      style: Theme.of(
+                                                        context,
+                                                      ).textTheme.bodySmall,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Radio<_PublishPreset>(
+                                                value: preset,
+                                                groupValue: selectedPreset,
+                                                onChanged: (_) => setState(
+                                                  () => selectedPreset = preset,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => Navigator.of(context).pop(
+                                _PublishRequest(
+                                  action: _PublishAction.share,
+                                  preset: selectedPreset,
+                                ),
+                              ),
+                              icon: const Icon(Icons.ios_share_rounded),
+                              label: const Text('分享'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () => Navigator.of(context).pop(
+                                _PublishRequest(
+                                  action: _PublishAction.save,
+                                  preset: selectedPreset,
+                                ),
+                              ),
+                              icon: const Icon(Icons.save_alt_outlined),
+                              label: const Text('保存到相册'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   // -- 我们将之前创建 emoji 的逻辑提取到一个新方法中 --
@@ -545,15 +743,10 @@ class EditorScreen extends ConsumerWidget {
             tooltip: '重做',
             onPressed: canRedo ? () => canvasNotifier.redo() : null,
           ),
-          IconButton(
-            icon: const Icon(Icons.ios_share_rounded),
-            tooltip: '分享',
-            onPressed: () => _shareImage(context, ref),
-          ),
-          IconButton(
-            icon: const Icon(Icons.save_alt_outlined),
-            tooltip: '导出',
-            onPressed: () => _exportImage(context, ref),
+          FilledButton.tonalIcon(
+            onPressed: () => _publishCanvas(context, ref),
+            icon: const Icon(Icons.publish_outlined),
+            label: const Text('发布'),
           ),
         ],
       ),

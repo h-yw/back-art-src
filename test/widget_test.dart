@@ -235,5 +235,20 @@ void main() {
     expect(find.byIcon(Icons.add), findsOneWidget);
     expect(find.byIcon(Icons.layers_outlined), findsOneWidget);
     expect(find.text('添加'), findsOneWidget);
+    expect(find.text('发布'), findsOneWidget);
+  });
+
+  testWidgets('opens the publish sheet with export presets', (tester) async {
+    await tester.pumpWidget(const ProviderScope(child: BackArtApp()));
+
+    await tester.tap(find.text('发布'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('发布画布'), findsOneWidget);
+    expect(find.text('快速分享'), findsOneWidget);
+    expect(find.text('高清'), findsOneWidget);
+    expect(find.text('打印级'), findsOneWidget);
+    expect(find.text('保存到相册'), findsOneWidget);
+    expect(find.text('分享'), findsOneWidget);
   });
 }
