@@ -236,6 +236,7 @@ void main() {
     expect(find.byIcon(Icons.layers_outlined), findsOneWidget);
     expect(find.text('添加'), findsOneWidget);
     expect(find.text('发布'), findsOneWidget);
+    expect(find.text('更多'), findsOneWidget);
   });
 
   testWidgets('opens the publish sheet with export presets', (tester) async {
@@ -250,5 +251,25 @@ void main() {
     expect(find.text('打印级'), findsOneWidget);
     expect(find.text('保存到相册'), findsOneWidget);
     expect(find.text('分享'), findsOneWidget);
+  });
+
+  testWidgets('opens overflow actions from the compact toolbar', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          initialCanvasStateProvider.overrideWithValue(
+            const CanvasState(layers: [BackgroundLayer(id: 'background')]),
+          ),
+        ],
+        child: const BackArtApp(),
+      ),
+    );
+
+    await tester.tap(find.text('更多'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('模板'), findsOneWidget);
   });
 }

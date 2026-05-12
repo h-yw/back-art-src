@@ -645,38 +645,39 @@ class EditorScreen extends ConsumerWidget {
     };
   }
 
-  Widget _buildToolbarActionButton(
+  Future<void> _showToolbarActionsSheet(
     BuildContext context,
-    _ToolbarAction action,
+    List<_ToolbarAction> actions,
   ) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final buttonChild = action.isPrimary
-        ? FilledButton.icon(
-            onPressed: action.onPressed,
-            icon: Icon(action.icon),
-            label: Text(action.label),
-          )
-        : action.isDestructive
-        ? OutlinedButton.icon(
-            onPressed: action.onPressed,
-            icon: Icon(action.icon, color: colorScheme.error),
-            label: Text(
-              action.label,
-              style: TextStyle(color: colorScheme.error),
-            ),
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(color: colorScheme.errorContainer),
-            ),
-          )
-        : FilledButton.tonalIcon(
-            onPressed: action.onPressed,
-            icon: Icon(action.icon),
-            label: Text(action.label),
-          );
-
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: buttonChild,
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final action in actions)
+              ListTile(
+                leading: Icon(
+                  action.icon,
+                  color: action.isDestructive
+                      ? Theme.of(context).colorScheme.error
+                      : null,
+                ),
+                title: Text(
+                  action.label,
+                  style: action.isDestructive
+                      ? TextStyle(color: Theme.of(context).colorScheme.error)
+                      : null,
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  action.onPressed();
+                },
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -714,6 +715,19 @@ class EditorScreen extends ConsumerWidget {
       selectedLayer,
       selectedType,
     );
+    final primaryAction =
+        contextActions.firstWhereOrNull((action) => action.isPrimary) ??
+        contextActions.firstOrNull;
+    final secondaryActions = contextActions
+        .where((action) => action != primaryAction)
+        .toList();
+    final quickAction = secondaryActions.firstWhereOrNull(
+      (action) => !action.isDestructive,
+    );
+    final overflowActions = secondaryActions
+        .where((action) => action != quickAction)
+        .toList();
+    final shouldShowMore = overflowActions.isNotEmpty;
 
     return Scaffold(
       drawer: const LayerListPanel(),
@@ -840,14 +854,45 @@ class EditorScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final action in contextActions)
-                    _buildToolbarActionButton(context, action),
-                ],
-              ),
+            Row(
+              children: [
+                if (primaryAction != null)
+                  Expanded(
+                    child: primaryAction.isPrimary
+                        ? FilledButton.icon(
+                            onPressed: primaryAction.onPressed,
+                            icon: Icon(primaryAction.icon),
+                            label: Text(primaryAction.label),
+                          )
+                        : FilledButton.tonalIcon(
+                            onPressed: primaryAction.onPressed,
+                            icon: Icon(primaryAction.icon),
+                            label: Text(primaryAction.label),
+                          ),
+                  ),
+                if (primaryAction != null &&
+                    (quickAction != null || shouldShowMore))
+                  const SizedBox(width: 8),
+                if (quickAction != null)
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      onPressed: quickAction.onPressed,
+                      icon: Icon(quickAction.icon),
+                      label: Text(quickAction.label),
+                    ),
+                  ),
+                if (quickAction != null && shouldShowMore)
+                  const SizedBox(width: 8),
+                if (shouldShowMore)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          _showToolbarActionsSheet(context, overflowActions),
+                      icon: const Icon(Icons.more_horiz_rounded),
+                      label: const Text('更多'),
+                    ),
+                  ),
+              ],
             ),
           ],
         ),
