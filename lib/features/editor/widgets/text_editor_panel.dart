@@ -90,6 +90,14 @@ class TextEditorPanel extends ConsumerWidget {
                     textLayer.copyWith(text: newText),
                   );
                 },
+                onTapOutside: (_) {
+                  canvasNotifier.commitLiveUpdate();
+                  FocusScope.of(context).unfocus();
+                },
+                onFieldSubmitted: (_) {
+                  canvasNotifier.commitLiveUpdate();
+                  FocusScope.of(context).unfocus();
+                },
                 onEditingComplete: () {
                   canvasNotifier.commitLiveUpdate();
                   FocusScope.of(context).unfocus();

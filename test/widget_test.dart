@@ -4,13 +4,33 @@ import 'package:BackArt/config/templates.dart';
 import 'package:BackArt/features/canvas/data/canvas_draft_repository.dart';
 import 'package:BackArt/features/canvas/model/layer.dart';
 import 'package:BackArt/features/canvas/state/canvas_state.dart';
+import 'package:BackArt/features/canvas/view/canvas_view.dart';
 import 'package:BackArt/features/editor/state/editor_state.dart';
+import 'package:BackArt/features/editor/widgets/text_editor_panel.dart';
 import 'package:BackArt/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  Widget buildCanvasTestApp(ProviderContainer container) {
+    return UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 270,
+              height: 480,
+              child: const CanvasView(canvasDisplaySize: Size(270, 480)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   test('reorders editable layers from the top-to-bottom drawer order', () {
     final notifier = CanvasStateNotifier();
     notifier
@@ -94,6 +114,65 @@ void main() {
       'Draft',
     );
     expect(container.read(selectedLayerProvider), 'selected');
+  });
+
+  testWidgets('tap delete handle removes the selected layer', (tester) async {
+    final container = ProviderContainer(
+      overrides: [
+        initialCanvasStateProvider.overrideWithValue(
+          CanvasState(
+            layers: [
+              const BackgroundLayer(id: 'background'),
+              TextLayer.initial().copyWith(
+                id: 'text',
+                rect: const Rect.fromLTWH(100, 100, 200, 100),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(buildCanvasTestApp(container));
+    await tester.tapAt(const Offset(25, 25));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(
+      container.read(canvasStateProvider).layers.whereType<TextLayer>(),
+      isEmpty,
+    );
+    expect(container.read(selectedLayerProvider), isNull);
+  });
+
+  testWidgets('double tap on a text layer opens the text editor panel', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        initialCanvasStateProvider.overrideWithValue(
+          CanvasState(
+            layers: [
+              const BackgroundLayer(id: 'background'),
+              TextLayer.initial().copyWith(
+                id: 'text',
+                rect: const Rect.fromLTWH(100, 100, 200, 100),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(buildCanvasTestApp(container));
+    await tester.tapAt(const Offset(50, 37.5));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(const Offset(50, 37.5));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextEditorPanel), findsOneWidget);
+    expect(container.read(selectedLayerProvider), 'text');
   });
 
   testWidgets('renders the editor toolbar', (tester) async {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../editor/widgets/text_editor_panel.dart';
 import '../../editor/state/editor_state.dart';
 import '../model/layer.dart';
 import '../state/canvas_state.dart';
@@ -19,6 +20,7 @@ class CanvasView extends ConsumerStatefulWidget {
 class _CanvasViewState extends ConsumerState<CanvasView> {
   Layer? _initialLayerState;
   Offset? _initialFocalPoint;
+  Offset? _lastDoubleTapPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -30,12 +32,22 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
     return GestureDetector(
       onTapUp: (details) {
         final tapPosition = details.localPosition / scale;
+        final selectedLayer = canvasState.layers.firstWhereOrNull(
+          (layer) => layer.id == selectedLayerId,
+        );
+        if (_isTapOnDeleteHandle(selectedLayer, tapPosition, scale)) {
+          canvasNotifier.removeLayer(selectedLayer!.id);
+          ref.read(selectedLayerProvider.notifier).state = _nextSelectedLayerId(
+            currentSelectedId: selectedLayer.id,
+          );
+          return;
+        }
+
         final currentSelectedId = ref.read(selectedLayerProvider);
-        final tappedLayer = canvasState.layers.lastWhereOrNull((layer) {
-          if (layer is BackgroundLayer || !layer.isVisible || layer.isLocked)
-            return false;
-          return _isTapOnLayer(layer, tapPosition);
-        });
+        final tappedLayer = _findTopmostEditableLayer(
+          canvasState.layers,
+          tapPosition,
+        );
         if (tappedLayer != null) {
           if (tappedLayer.id == currentSelectedId) {
             ref.read(selectedLayerProvider.notifier).state = null;
@@ -45,6 +57,25 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
         } else {
           ref.read(selectedLayerProvider.notifier).state = null;
         }
+      },
+      onDoubleTapDown: (details) {
+        _lastDoubleTapPosition = details.localPosition / scale;
+      },
+      onDoubleTap: () {
+        final doubleTapPosition = _lastDoubleTapPosition;
+        if (doubleTapPosition == null) return;
+
+        final tappedTextLayer = _findTopmostTextLayer(
+          canvasState.layers,
+          doubleTapPosition,
+        );
+        if (tappedTextLayer == null || tappedTextLayer.isLocked) return;
+
+        ref.read(selectedLayerProvider.notifier).state = tappedTextLayer.id;
+        showModalBottomSheet<void>(
+          context: context,
+          builder: (context) => const TextEditorPanel(),
+        );
       },
       onScaleStart: (details) {
         final selectedId = ref.read(selectedLayerProvider);
@@ -120,7 +151,62 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
     );
   }
 
-  bool _isTapOnLayer(Layer layer, Offset tapPosition) {
+  Layer? _findTopmostEditableLayer(List<Layer> layers, Offset tapPosition) {
+    return layers.lastWhereOrNull((layer) {
+      if (layer is BackgroundLayer || !layer.isVisible || layer.isLocked) {
+        return false;
+      }
+      return _isTapOnLayer(layer, tapPosition);
+    });
+  }
+
+  TextLayer? _findTopmostTextLayer(List<Layer> layers, Offset tapPosition) {
+    final layer = layers.lastWhereOrNull((layer) {
+      return layer is TextLayer &&
+          layer.isVisible &&
+          _isTapOnLayer(layer, tapPosition);
+    });
+    return layer is TextLayer ? layer : null;
+  }
+
+  bool _isTapOnDeleteHandle(
+    Layer? layer,
+    Offset tapPosition,
+    double canvasScale,
+  ) {
+    if (layer == null ||
+        layer is BackgroundLayer ||
+        !layer.isVisible ||
+        layer.isLocked) {
+      return false;
+    }
+
+    final transformedTapPosition = _transformToLayerSpace(layer, tapPosition);
+    final handleRadiusInLayerSpace =
+        kHandleRadius / (canvasScale * layer.scale);
+    return (transformedTapPosition - layer.rect.topLeft).distance <=
+        handleRadiusInLayerSpace;
+  }
+
+  String? _nextSelectedLayerId({required String currentSelectedId}) {
+    final layers = ref.read(canvasStateProvider).layers;
+    final currentIndex = layers.indexWhere(
+      (layer) => layer.id == currentSelectedId,
+    );
+    if (currentIndex == -1) return null;
+
+    for (var index = currentIndex - 1; index >= 0; index--) {
+      final layer = layers[index];
+      if (layer is! BackgroundLayer) return layer.id;
+    }
+    for (var index = currentIndex + 1; index < layers.length; index++) {
+      final layer = layers[index];
+      if (layer is! BackgroundLayer) return layer.id;
+    }
+    return null;
+  }
+
+  Offset _transformToLayerSpace(Layer layer, Offset tapPosition) {
     final transform = Matrix4.identity()
       ..translate(layer.rect.center.dx, layer.rect.center.dy)
       ..rotateZ(layer.rotation)
@@ -128,11 +214,11 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
       ..translate(-layer.rect.center.dx, -layer.rect.center.dy);
 
     final invTransform = Matrix4.inverted(transform);
-    final transformedTapPosition = MatrixUtils.transformPoint(
-      invTransform,
-      tapPosition,
-    );
+    return MatrixUtils.transformPoint(invTransform, tapPosition);
+  }
 
+  bool _isTapOnLayer(Layer layer, Offset tapPosition) {
+    final transformedTapPosition = _transformToLayerSpace(layer, tapPosition);
     return layer.rect.contains(transformedTapPosition);
   }
 }
