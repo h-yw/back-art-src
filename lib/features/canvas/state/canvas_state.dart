@@ -223,6 +223,37 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
     _recordState(state.copyWith(layers: newLayers));
   }
 
+  String? duplicateLayer(
+    String layerId, {
+    Offset offset = const Offset(24, 24),
+  }) {
+    final originalIndex = state.layers.indexWhere(
+      (layer) => layer.id == layerId,
+    );
+    if (originalIndex == -1) return null;
+
+    final originalLayer = state.layers[originalIndex];
+    if (originalLayer is BackgroundLayer) return null;
+
+    final duplicate = _buildDuplicatedLayer(originalLayer, offset);
+    final newLayers = [...state.layers]..insert(originalIndex + 1, duplicate);
+    _recordState(state.copyWith(layers: newLayers));
+    return duplicate.id;
+  }
+
+  Layer _buildDuplicatedLayer(Layer layer, Offset offset) {
+    final newRect = layer.rect.translate(offset.dx, offset.dy);
+    final newId = generateLayerId();
+
+    return switch (layer) {
+      TextLayer() => layer.copyWith(id: newId, rect: newRect),
+      ImageLayer() => layer.copyWith(id: newId, rect: newRect),
+      ShapeLayer() => layer.copyWith(id: newId, rect: newRect),
+      BackgroundLayer() => layer,
+      _ => layer,
+    };
+  }
+
   void removeLayer(String layerId) {
     final newLayers = state.layers
         .where((layer) => layer.id != layerId)

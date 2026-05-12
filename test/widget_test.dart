@@ -64,6 +64,41 @@ void main() {
     expect(notifier.state.layers.whereType<BackgroundLayer>(), hasLength(1));
   });
 
+  test('duplicates a text layer above the original with an offset', () {
+    final notifier = CanvasStateNotifier();
+    final originalLayer = TextLayer.initial().copyWith(
+      id: 'original',
+      text: 'Duplicate me',
+      rect: const Rect.fromLTWH(100, 100, 200, 80),
+    );
+    notifier.addLayer(originalLayer);
+
+    final duplicatedId = notifier.duplicateLayer('original');
+
+    expect(duplicatedId, isNotNull);
+    expect(notifier.state.layers.whereType<TextLayer>(), hasLength(3));
+
+    final originalIndex = notifier.state.layers.indexWhere(
+      (layer) => layer.id == 'original',
+    );
+    final duplicatedLayer =
+        notifier.state.layers[originalIndex + 1] as TextLayer;
+    expect(duplicatedLayer.id, duplicatedId);
+    expect(duplicatedLayer.text, 'Duplicate me');
+    expect(duplicatedLayer.rect.topLeft, const Offset(124, 124));
+  });
+
+  test('does not duplicate the background layer', () {
+    final notifier = CanvasStateNotifier();
+
+    final duplicatedId = notifier.duplicateLayer(
+      notifier.state.layers.first.id,
+    );
+
+    expect(duplicatedId, isNull);
+    expect(notifier.state.layers.whereType<BackgroundLayer>(), hasLength(1));
+  });
+
   test('saves and restores a text and shape draft', () async {
     final tempDirectory = Directory.systemTemp.createTempSync(
       'back_art_draft_test_',

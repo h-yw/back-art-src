@@ -9,6 +9,8 @@ String _generateUniqueId() {
   return 'layer_$_idCounter';
 }
 
+String generateLayerId() => _generateUniqueId();
+
 Size _calculateTextSize(
   String text,
   TextStyle style,
@@ -99,8 +101,7 @@ class BackgroundLayer extends Layer {
 
 @immutable
 class TextLayer extends Layer {
-  const
-  TextLayer({
+  const TextLayer({
     required String id,
     Rect rect = const Rect.fromLTWH(50, 50, 300, 150),
     Alignment? alignment,
@@ -166,7 +167,6 @@ class TextLayer extends Layer {
   final Color strokeColor;
   final double strokeWidth;
 
-
   @override
   TextLayer copyWith({
     String? id,
@@ -222,8 +222,8 @@ class ImageLayer extends Layer {
          rotation: rotation,
          scale: scale,
          opacity: opacity,
-    isLocked: isLocked,
-    isVisible: isVisible,
+         isLocked: isLocked,
+         isVisible: isVisible,
        );
 
   factory ImageLayer.fromImage(ui.Image image) {
@@ -261,8 +261,8 @@ class ImageLayer extends Layer {
       scale: scale ?? this.scale,
       opacity: opacity ?? this.opacity,
       image: image ?? this.image,
-      isVisible:isVisible??this.isVisible,
-      isLocked : isLocked??this.isLocked,
+      isVisible: isVisible ?? this.isVisible,
+      isLocked: isLocked ?? this.isLocked,
     );
   }
 }
@@ -293,8 +293,8 @@ class ShapeLayer extends Layer {
          scale: scale,
          opacity: opacity,
          alignment: alignment,
-    isVisible: isVisible,
-    isLocked: isLocked
+         isVisible: isVisible,
+         isLocked: isLocked,
        );
 
   factory ShapeLayer.initial() {
@@ -343,8 +343,8 @@ class ShapeLayer extends Layer {
       color: color ?? this.color,
       paintStyle: paintStyle ?? this.paintStyle,
       strokeWidth: strokeWidth ?? this.strokeWidth,
-      isVisible:isVisible??this.isVisible,
-      isLocked: isLocked??this.isLocked
+      isVisible: isVisible ?? this.isVisible,
+      isLocked: isLocked ?? this.isLocked,
     );
   }
 }

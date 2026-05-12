@@ -334,6 +334,22 @@ class EditorScreen extends ConsumerWidget {
                     title: Text('对齐图层'),
                   ),
                 ),
+                PopupMenuItem(
+                  enabled: isLayerSelected,
+                  value: () {
+                    final duplicatedLayerId = canvasNotifier.duplicateLayer(
+                      selectedLayer!.id,
+                    );
+                    if (duplicatedLayerId != null) {
+                      ref.read(selectedLayerProvider.notifier).state =
+                          duplicatedLayerId;
+                    }
+                  },
+                  child: const ListTile(
+                    leading: Icon(Icons.copy_all_outlined),
+                    title: Text('复制图层'),
+                  ),
+                ),
                 const PopupMenuDivider(),
                 PopupMenuItem(
                   value: () => _shareImage(context, ref),

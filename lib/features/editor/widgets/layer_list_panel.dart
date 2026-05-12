@@ -103,6 +103,18 @@ class LayerListPanel extends ConsumerWidget {
                               canvasNotifier.toggleLayerLock(layer.id),
                         ),
                         IconButton(
+                          icon: const Icon(Icons.copy_all_outlined),
+                          tooltip: 'Duplicate',
+                          onPressed: () {
+                            final duplicatedLayerId = canvasNotifier
+                                .duplicateLayer(layer.id);
+                            if (duplicatedLayerId != null) {
+                              ref.read(selectedLayerProvider.notifier).state =
+                                  duplicatedLayerId;
+                            }
+                          },
+                        ),
+                        IconButton(
                           icon: const Icon(Icons.delete_outline),
                           onPressed: () => canvasNotifier.removeLayer(layer.id),
                         ),
