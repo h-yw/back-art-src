@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:BackArt/features/canvas/model/layer.dart';
 import 'package:BackArt/features/canvas/state/canvas_state.dart';
 import 'package:BackArt/features/canvas/view/canvas_view.dart';
+import 'package:BackArt/features/editor/state/editor_state.dart';
 import 'package:BackArt/features/editor/widgets/alignment_panel.dart';
 import 'package:BackArt/features/editor/widgets/color_editor_panel.dart';
 import 'package:BackArt/features/editor/widgets/layer_list_panel.dart';
@@ -18,19 +19,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:ui' as ui;
 import 'package:collection/collection.dart'; // Ensure you have this package in pubspec.yaml
-
-enum SelectedLayerType { none, text, image, shape, background }
-
-// selectedLayerProvider 保持不变，移到这里以保持文件独立性
-final selectedLayerProvider = StateProvider<String?>((ref) {
-  final layers = ref.read(canvasStateProvider).layers;
-  // 查找第一个非背景的图层作为默认选中
-  final firstEditableLayer = layers.firstWhere(
-    (l) => l is! BackgroundLayer,
-    orElse: () => layers.last,
-  );
-  return firstEditableLayer.id;
-});
 
 class EditorScreen extends ConsumerWidget {
   EditorScreen({Key? key}) : super(key: key);

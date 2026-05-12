@@ -1,8 +1,7 @@
 import 'package:BackArt/features/canvas/state/canvas_state.dart';
+import 'package:BackArt/features/editor/state/editor_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../view/editor_screen.dart';
 
 class AlignmentPanel extends ConsumerWidget {
   const AlignmentPanel({Key? key}) : super(key: key);

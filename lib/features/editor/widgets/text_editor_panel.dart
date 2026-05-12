@@ -3,21 +3,11 @@
 import 'package:BackArt/config/font_list.dart';
 import 'package:BackArt/features/canvas/model/layer.dart';
 import 'package:BackArt/features/canvas/state/canvas_state.dart';
+import 'package:BackArt/features/editor/state/editor_state.dart';
 import 'package:BackArt/features/editor/widgets/compact-alignment-selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../view/editor_screen.dart';
-
-// // selectedLayerProvider 保持不变，移到这里以保持文件独立性
-// final selectedLayerProvider = StateProvider<String?>((ref) {
-//   final layers = ref.read(canvasStateProvider).layers;
-//   // 查找第一个非背景的图层作为默认选中
-//   final firstEditableLayer =
-//   layers.firstWhere((l) => l is! BackgroundLayer, orElse: () => layers.last);
-//   return firstEditableLayer.id;
-// });
 
 FontWeight _sliderValueToFontWeight(double value) {
   switch (value.round()) {

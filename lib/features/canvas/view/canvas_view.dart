@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../editor/view/editor_screen.dart';
+import '../../editor/state/editor_state.dart';
 import '../model/layer.dart';
 import '../state/canvas_state.dart';
 import 'dart:math';

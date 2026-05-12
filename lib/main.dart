@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:BackArt/features/canvas/data/canvas_draft_repository.dart';
+import 'package:BackArt/features/canvas/state/canvas_state.dart';
 import 'package:BackArt/features/editor/view/editor_screen.dart';
 import 'package:BackArt/theme/theme.dart'; // Import the simplified theme file
 import 'package:BackArt/l10n/app_localizations.dart';
@@ -10,7 +12,17 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Wait for the database to be ready
   await DbManager.initialize();
-  runApp(const ProviderScope(child: BackArtApp()));
+  final draftRepository = CanvasDraftRepository();
+  final initialCanvasState = await draftRepository.load();
+  runApp(
+    ProviderScope(
+      overrides: [
+        canvasDraftRepositoryProvider.overrideWithValue(draftRepository),
+        initialCanvasStateProvider.overrideWithValue(initialCanvasState),
+      ],
+      child: const BackArtApp(),
+    ),
+  );
 }
 
 class BackArtApp extends StatelessWidget {

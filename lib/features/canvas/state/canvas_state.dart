@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:BackArt/core/utils/color_utils.dart';
+import 'package:BackArt/features/canvas/data/canvas_draft_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../config/templates.dart';
@@ -42,11 +45,16 @@ class CanvasState {
 }
 
 class CanvasStateNotifier extends StateNotifier<CanvasState> {
-  CanvasStateNotifier() : super(CanvasState.initial()) {
+  CanvasStateNotifier({
+    CanvasState? initialState,
+    Future<void> Function(CanvasState state)? onStateChanged,
+  }) : _onStateChanged = onStateChanged,
+       super(initialState ?? CanvasState.initial()) {
     _history.add(state);
     _historyIndex++;
   }
 
+  final Future<void> Function(CanvasState state)? _onStateChanged;
   final List<CanvasState> _history = [];
   int _historyIndex = -1;
 
@@ -65,12 +73,14 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
       _history.removeAt(0);
       _historyIndex--;
     }
+    _persistState();
   }
 
   void undo() {
     if (canUndo) {
       _historyIndex--;
       state = _history[_historyIndex];
+      _persistState();
     }
   }
 
@@ -78,7 +88,14 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
     if (canRedo) {
       _historyIndex++;
       state = _history[_historyIndex];
+      _persistState();
     }
+  }
+
+  void _persistState() {
+    final onStateChanged = _onStateChanged;
+    if (onStateChanged == null) return;
+    unawaited(onStateChanged(state).catchError((_) {}));
   }
 
   CanvasState _calculateUpdatedState(Layer updatedLayer) {
@@ -426,7 +443,17 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
   }
 }
 
+final initialCanvasStateProvider = Provider<CanvasState?>((ref) => null);
+
+final canvasDraftRepositoryProvider = Provider<CanvasDraftRepository?>(
+  (ref) => null,
+);
+
 final canvasStateProvider =
     StateNotifierProvider<CanvasStateNotifier, CanvasState>((ref) {
-      return CanvasStateNotifier();
+      final draftRepository = ref.watch(canvasDraftRepositoryProvider);
+      return CanvasStateNotifier(
+        initialState: ref.watch(initialCanvasStateProvider),
+        onStateChanged: draftRepository?.save,
+      );
     });

@@ -1,10 +1,9 @@
 import 'package:BackArt/config/templates.dart'; // 导入模板函数
 import 'package:BackArt/features/canvas/model/layer.dart';
 import 'package:BackArt/features/canvas/state/canvas_state.dart';
+import 'package:BackArt/features/editor/state/editor_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../view/editor_screen.dart';
 
 class TemplateSelectorPanel extends ConsumerWidget {
   const TemplateSelectorPanel({Key? key}) : super(key: key);
