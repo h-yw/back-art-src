@@ -99,6 +99,25 @@ void main() {
     expect(notifier.state.layers.whereType<BackgroundLayer>(), hasLength(1));
   });
 
+  test('picks the previous editable layer after deleting the current one', () {
+    final layers = [
+      const BackgroundLayer(id: 'background'),
+      TextLayer.initial().copyWith(id: 'first'),
+      TextLayer.initial().copyWith(id: 'second'),
+      ShapeLayer.initial().copyWith(id: 'third'),
+    ];
+
+    expect(nextEditableLayerId(layers, currentLayerId: 'third'), 'second');
+    expect(nextEditableLayerId(layers, currentLayerId: 'first'), 'second');
+    expect(
+      nextEditableLayerId([
+        const BackgroundLayer(id: 'background'),
+        TextLayer.initial().copyWith(id: 'only'),
+      ], currentLayerId: 'only'),
+      isNull,
+    );
+  });
+
   test('saves and restores a text and shape draft', () async {
     final tempDirectory = Directory.systemTemp.createTempSync(
       'back_art_draft_test_',

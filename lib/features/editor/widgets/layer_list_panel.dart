@@ -116,7 +116,17 @@ class LayerListPanel extends ConsumerWidget {
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline),
-                          onPressed: () => canvasNotifier.removeLayer(layer.id),
+                          onPressed: () {
+                            final nextSelectedId = selectedLayerId == layer.id
+                                ? nextEditableLayerId(
+                                    layers,
+                                    currentLayerId: layer.id,
+                                  )
+                                : selectedLayerId;
+                            canvasNotifier.removeLayer(layer.id);
+                            ref.read(selectedLayerProvider.notifier).state =
+                                nextSelectedId;
+                          },
                         ),
                       ],
                     ),

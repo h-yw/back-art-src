@@ -37,8 +37,9 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
         );
         if (_isTapOnDeleteHandle(selectedLayer, tapPosition, scale)) {
           canvasNotifier.removeLayer(selectedLayer!.id);
-          ref.read(selectedLayerProvider.notifier).state = _nextSelectedLayerId(
-            currentSelectedId: selectedLayer.id,
+          ref.read(selectedLayerProvider.notifier).state = nextEditableLayerId(
+            canvasState.layers,
+            currentLayerId: selectedLayer.id,
           );
           return;
         }
@@ -186,24 +187,6 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
         kHandleRadius / (canvasScale * layer.scale);
     return (transformedTapPosition - layer.rect.topLeft).distance <=
         handleRadiusInLayerSpace;
-  }
-
-  String? _nextSelectedLayerId({required String currentSelectedId}) {
-    final layers = ref.read(canvasStateProvider).layers;
-    final currentIndex = layers.indexWhere(
-      (layer) => layer.id == currentSelectedId,
-    );
-    if (currentIndex == -1) return null;
-
-    for (var index = currentIndex - 1; index >= 0; index--) {
-      final layer = layers[index];
-      if (layer is! BackgroundLayer) return layer.id;
-    }
-    for (var index = currentIndex + 1; index < layers.length; index++) {
-      final layer = layers[index];
-      if (layer is! BackgroundLayer) return layer.id;
-    }
-    return null;
   }
 
   Offset _transformToLayerSpace(Layer layer, Offset tapPosition) {
