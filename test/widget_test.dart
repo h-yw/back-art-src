@@ -232,7 +232,8 @@ void main() {
   testWidgets('renders the editor toolbar', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: BackArtApp()));
 
-    expect(find.byIcon(Icons.add_circle_outline_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.more_vert), findsOneWidget);
+    expect(find.byIcon(Icons.add), findsOneWidget);
+    expect(find.byIcon(Icons.layers_outlined), findsOneWidget);
+    expect(find.text('添加'), findsOneWidget);
   });
 }
