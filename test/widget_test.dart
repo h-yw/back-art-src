@@ -23,6 +23,10 @@ void main() {
     return picture.toImage(40, 40);
   }
 
+  setUp(() {
+    resetLayerIdCounterForTest();
+  });
+
   Widget buildCanvasTestApp(ProviderContainer container) {
     return UncontrolledProviderScope(
       container: container,
@@ -158,6 +162,39 @@ void main() {
     expect(imageLayer.rect.size, const Size(40, 40));
     expect(imageLayer.rect.center, const Offset(300, 500));
     expect(imageLayer.scale, 1.0);
+  });
+
+  test('syncs the layer id counter with restored draft ids', () {
+    final notifier = CanvasStateNotifier(
+      initialState: CanvasState(
+        layers: [
+          const BackgroundLayer(id: 'layer_8'),
+          TextLayer.initial().copyWith(id: 'layer_9', text: 'Restored'),
+        ],
+      ),
+    );
+
+    notifier.addLayer(TextLayer.initial().copyWith(text: 'New layer'));
+
+    final ids = notifier.state.layers.map((layer) => layer.id).toList();
+    expect(ids.toSet(), hasLength(ids.length));
+    expect(ids.last, 'layer_10');
+  });
+
+  test('normalizes duplicate ids from initial state', () {
+    final notifier = CanvasStateNotifier(
+      initialState: CanvasState(
+        layers: [
+          const BackgroundLayer(id: 'layer_1'),
+          TextLayer.initial().copyWith(id: 'layer_2', text: 'First'),
+          TextLayer.initial().copyWith(id: 'layer_2', text: 'Second'),
+        ],
+      ),
+    );
+
+    final ids = notifier.state.layers.map((layer) => layer.id).toList();
+    expect(ids.toSet(), hasLength(ids.length));
+    expect(ids, containsAll(['layer_1', 'layer_2', 'layer_3']));
   });
 
   test('picks the previous editable layer after deleting the current one', () {
@@ -298,6 +335,17 @@ void main() {
     expect(find.text('添加'), findsOneWidget);
     expect(find.text('发布'), findsOneWidget);
     expect(find.text('更多'), findsOneWidget);
+  });
+
+  testWidgets('opens the layer drawer from the bottom toolbar button', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ProviderScope(child: BackArtApp()));
+
+    await tester.tap(find.byIcon(Icons.layers_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Background'), findsOneWidget);
   });
 
   testWidgets('opens the publish sheet with export presets', (tester) async {

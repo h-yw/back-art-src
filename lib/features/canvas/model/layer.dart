@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 // 使用一个全局的私有计数器来生成唯一的ID
 int _idCounter = 0;
+final RegExp _layerIdPattern = RegExp(r'^layer_(\d+)$');
 
 String _generateUniqueId() {
   _idCounter++;
@@ -10,6 +11,21 @@ String _generateUniqueId() {
 }
 
 String generateLayerId() => _generateUniqueId();
+
+void syncLayerIdCounterWithIds(Iterable<String> ids) {
+  for (final id in ids) {
+    final match = _layerIdPattern.firstMatch(id);
+    final parsedValue = match == null ? null : int.tryParse(match.group(1)!);
+    if (parsedValue != null && parsedValue > _idCounter) {
+      _idCounter = parsedValue;
+    }
+  }
+}
+
+@visibleForTesting
+void resetLayerIdCounterForTest([int value = 0]) {
+  _idCounter = value;
+}
 
 Size _calculateTextSize(
   String text,

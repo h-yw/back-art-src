@@ -51,6 +51,7 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
     Future<void> Function(CanvasState state)? onStateChanged,
   }) : _onStateChanged = onStateChanged,
        super(initialState ?? CanvasState.initial()) {
+    state = _normalizeState(state);
     _history.add(state);
     _historyIndex++;
   }
@@ -61,6 +62,26 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
 
   bool get canUndo => _historyIndex > 0;
   bool get canRedo => _historyIndex < _history.length - 1;
+
+  CanvasState _normalizeState(CanvasState currentState) {
+    syncLayerIdCounterWithIds(currentState.layers.map((layer) => layer.id));
+
+    final seenIds = <String>{};
+    var didUpdate = false;
+    final normalizedLayers = currentState.layers.map((layer) {
+      if (seenIds.add(layer.id)) {
+        return layer;
+      }
+
+      didUpdate = true;
+      return layer.copyWith(id: generateLayerId());
+    }).toList();
+
+    syncLayerIdCounterWithIds(normalizedLayers.map((layer) => layer.id));
+    return didUpdate
+        ? currentState.copyWith(layers: normalizedLayers)
+        : currentState;
+  }
 
   void _recordState(CanvasState newState) {
     if (_historyIndex < _history.length - 1) {

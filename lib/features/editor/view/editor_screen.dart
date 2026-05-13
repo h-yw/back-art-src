@@ -65,6 +65,7 @@ class EditorScreen extends ConsumerWidget {
 
   // A GlobalKey is needed to access the RepaintBoundary
   final GlobalKey _canvasKey = GlobalKey();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   static const List<_PublishPreset> _publishPresets = [
     _PublishPreset(
       title: '快速分享',
@@ -747,6 +748,7 @@ class EditorScreen extends ConsumerWidget {
     final shouldShowMore = overflowActions.isNotEmpty;
 
     return Scaffold(
+      key: _scaffoldKey,
       drawer: const LayerListPanel(),
       appBar: AppBar(
         titleSpacing: 8,
@@ -864,7 +866,7 @@ class EditorScreen extends ConsumerWidget {
                   ),
                 ),
                 FilledButton.tonalIcon(
-                  onPressed: () => Scaffold.of(context).openDrawer(),
+                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                   icon: const Icon(Icons.layers_outlined),
                   label: Text('${layers.length - 1}'),
                 ),
