@@ -43,21 +43,26 @@ class _PublishPreset {
   const _PublishPreset({
     required this.title,
     required this.subtitle,
-    required this.pixelRatio,
+    required this.scale,
     required this.icon,
   });
 
   final String title;
   final String subtitle;
-  final double pixelRatio;
+  final double scale;
   final IconData icon;
 }
 
 class _PublishRequest {
-  const _PublishRequest({required this.action, required this.preset});
+  const _PublishRequest({
+    required this.action,
+    required this.preset,
+    required this.format,
+  });
 
   final _PublishAction action;
   final _PublishPreset preset;
+  final ExportImageFormat format;
 }
 
 class EditorScreen extends ConsumerWidget {
@@ -68,24 +73,31 @@ class EditorScreen extends ConsumerWidget {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   static const List<_PublishPreset> _publishPresets = [
     _PublishPreset(
-      title: '快速分享',
-      subtitle: '1.5x · 速度更快，适合聊天和预览',
-      pixelRatio: 1.5,
+      title: '标准',
+      subtitle: '原始画布尺寸，适合日常发布',
+      scale: 1.0,
       icon: Icons.flash_on_outlined,
     ),
     _PublishPreset(
       title: '高清',
-      subtitle: '3x · 质量和速度更均衡',
-      pixelRatio: 3.0,
+      subtitle: '2x 细节，适合大多数社交平台',
+      scale: 2.0,
       icon: Icons.high_quality_outlined,
     ),
     _PublishPreset(
-      title: '打印级',
-      subtitle: '5x · 适合海报和高分辨率屏幕',
-      pixelRatio: 5.0,
+      title: '超清',
+      subtitle: '4x 输出，适合海报和精修导出',
+      scale: 4.0,
       icon: Icons.workspace_premium_outlined,
     ),
   ];
+
+  Size _outputSizeForPreset(Size canvasSize, _PublishPreset preset) {
+    return Size(
+      canvasSize.width * preset.scale,
+      canvasSize.height * preset.scale,
+    );
+  }
 
   Future<void> _pickImage(WidgetRef ref) async {
     final picker = ImagePicker();
@@ -106,7 +118,8 @@ class EditorScreen extends ConsumerWidget {
 
   Future<Uint8List?> _captureCanvasWithoutSelection(
     WidgetRef ref, {
-    required double pixelRatio,
+    required Size outputSize,
+    required ExportImageFormat format,
   }) async {
     final originalSelectedId = ref.read(selectedLayerProvider);
     ref.read(selectedLayerProvider.notifier).state = null;
@@ -114,7 +127,11 @@ class EditorScreen extends ConsumerWidget {
     try {
       await Future.delayed(const Duration(milliseconds: 50));
       final service = ExportService();
-      return await service.captureCanvasPng(_canvasKey, pixelRatio: pixelRatio);
+      return await service.captureCanvasBytes(
+        _canvasKey,
+        outputSize: outputSize,
+        format: format,
+      );
     } finally {
       ref.read(selectedLayerProvider.notifier).state = originalSelectedId;
     }
@@ -125,6 +142,10 @@ class EditorScreen extends ConsumerWidget {
     if (request == null || !context.mounted) {
       return;
     }
+    final canvasSize = ref.read(
+      canvasStateProvider.select((state) => state.canvasSize),
+    );
+    final outputSize = _outputSizeForPreset(canvasSize, request.preset);
 
     showDialog<void>(
       context: context,
@@ -135,7 +156,8 @@ class EditorScreen extends ConsumerWidget {
 
     final bytes = await _captureCanvasWithoutSelection(
       ref,
-      pixelRatio: request.preset.pixelRatio,
+      outputSize: outputSize,
+      format: request.format,
     );
 
     if (context.mounted) {
@@ -155,8 +177,14 @@ class EditorScreen extends ConsumerWidget {
 
     final service = ExportService();
     final success = switch (request.action) {
-      _PublishAction.save => await service.savePngBytes(bytes),
-      _PublishAction.share => await service.sharePngBytes(bytes),
+      _PublishAction.save => await service.saveImageBytes(
+        bytes,
+        format: request.format,
+      ),
+      _PublishAction.share => await service.shareImageBytes(
+        bytes,
+        format: request.format,
+      ),
     };
 
     if (!context.mounted) {
@@ -185,8 +213,13 @@ class EditorScreen extends ConsumerWidget {
       showDragHandle: true,
       builder: (context) {
         var selectedPreset = _publishPresets[1];
+        var selectedFormat = ExportImageFormat.png;
         return StatefulBuilder(
           builder: (context, setState) {
+            final selectedSize = _outputSizeForPreset(
+              canvasSize,
+              selectedPreset,
+            );
             return SafeArea(
               child: FractionallySizedBox(
                 heightFactor: 0.8,
@@ -202,6 +235,36 @@ class EditorScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         '当前尺寸 ${canvasSize.width.round()} x ${canvasSize.height.round()}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        '导出格式',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 12),
+                      SegmentedButton<ExportImageFormat>(
+                        segments: const [
+                          ButtonSegment(
+                            value: ExportImageFormat.png,
+                            label: Text('PNG'),
+                            icon: Icon(Icons.image_outlined),
+                          ),
+                          ButtonSegment(
+                            value: ExportImageFormat.jpg,
+                            label: Text('JPG'),
+                            icon: Icon(Icons.photo_outlined),
+                          ),
+                        ],
+                        selected: {selectedFormat},
+                        onSelectionChanged: (selection) =>
+                            setState(() => selectedFormat = selection.first),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        selectedFormat == ExportImageFormat.png
+                            ? 'PNG 更适合保留图形边缘和透明像素。'
+                            : 'JPG 文件更小，适合快速分享照片类内容。',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       const SizedBox(height: 16),
@@ -279,6 +342,18 @@ class EditorScreen extends ConsumerWidget {
                                                         context,
                                                       ).textTheme.bodySmall,
                                                     ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      '${_outputSizeForPreset(canvasSize, preset).width.round()} x ${_outputSizeForPreset(canvasSize, preset).height.round()}',
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodySmall
+                                                          ?.copyWith(
+                                                            color: Theme.of(context)
+                                                                .colorScheme
+                                                                .onSurfaceVariant,
+                                                          ),
+                                                    ),
                                                   ],
                                                 ),
                                               ),
@@ -301,6 +376,11 @@ class EditorScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
+                      Text(
+                        '输出 ${selectedSize.width.round()} x ${selectedSize.height.round()} · ${selectedFormat.name.toUpperCase()}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
@@ -309,6 +389,7 @@ class EditorScreen extends ConsumerWidget {
                                 _PublishRequest(
                                   action: _PublishAction.share,
                                   preset: selectedPreset,
+                                  format: selectedFormat,
                                 ),
                               ),
                               icon: const Icon(Icons.ios_share_rounded),
@@ -322,6 +403,7 @@ class EditorScreen extends ConsumerWidget {
                                 _PublishRequest(
                                   action: _PublishAction.save,
                                   preset: selectedPreset,
+                                  format: selectedFormat,
                                 ),
                               ),
                               icon: const Icon(Icons.save_alt_outlined),

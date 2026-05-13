@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../editor/widgets/text_editor_panel.dart';
 import '../../editor/state/editor_state.dart';
 import '../model/layer.dart';
 import '../state/canvas_state.dart';
@@ -121,6 +120,56 @@ bool shouldSnapForTransform({
       rotationDelta.abs() <= kSnapRotationTolerance;
 }
 
+@visibleForTesting
+ImageLayer applyCropGestureToImageLayer({
+  required ImageLayer initialLayer,
+  required Offset translationInCanvas,
+  required double scaleDelta,
+}) {
+  final nextCropScale = (initialLayer.cropScale * scaleDelta).clamp(1.0, 4.0);
+  final imageSize = Size(
+    initialLayer.image.width.toDouble(),
+    initialLayer.image.height.toDouble(),
+  );
+  final sourceRect = sourceRectForImageFrame(
+    imageSize: imageSize,
+    frameSize: initialLayer.rect.size,
+    cropScale: nextCropScale,
+    cropAlignment: initialLayer.cropAlignment,
+  );
+
+  double nextAlignmentX = initialLayer.cropAlignment.x;
+  final maxLeft = imageSize.width - sourceRect.width;
+  if (maxLeft > 0.5) {
+    final sourceLeft = ((initialLayer.cropAlignment.x + 1) / 2.0) * maxLeft;
+    final sourceLeftDelta =
+        -(translationInCanvas.dx * sourceRect.width / initialLayer.rect.width);
+    final nextSourceLeft = (sourceLeft + sourceLeftDelta).clamp(0.0, maxLeft);
+    nextAlignmentX = (nextSourceLeft / maxLeft) * 2.0 - 1.0;
+  } else {
+    nextAlignmentX = 0.0;
+  }
+
+  double nextAlignmentY = initialLayer.cropAlignment.y;
+  final maxTop = imageSize.height - sourceRect.height;
+  if (maxTop > 0.5) {
+    final sourceTop = ((initialLayer.cropAlignment.y + 1) / 2.0) * maxTop;
+    final sourceTopDelta =
+        -(translationInCanvas.dy *
+            sourceRect.height /
+            initialLayer.rect.height);
+    final nextSourceTop = (sourceTop + sourceTopDelta).clamp(0.0, maxTop);
+    nextAlignmentY = (nextSourceTop / maxTop) * 2.0 - 1.0;
+  } else {
+    nextAlignmentY = 0.0;
+  }
+
+  return initialLayer.copyWith(
+    cropScale: nextCropScale,
+    cropAlignment: Alignment(nextAlignmentX, nextAlignmentY),
+  );
+}
+
 class CanvasView extends ConsumerStatefulWidget {
   const CanvasView({Key? key, required this.canvasDisplaySize})
     : super(key: key);
@@ -136,150 +185,271 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
   Offset? _lastTapLocalPosition;
   String? _lastTappedTextLayerId;
   List<SnapGuide> _activeSnapGuides = const [];
+  TextEditingController? _inlineTextController;
+  FocusNode? _inlineTextFocusNode;
+  String? _inlineTextEditingLayerId;
+
+  @override
+  void dispose() {
+    _disposeInlineTextEditingResources();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final canvasState = ref.watch(canvasStateProvider);
     final selectedLayerId = ref.watch(selectedLayerProvider);
+    final imageCropModeEnabled = ref.watch(imageCropModeProvider);
     final canvasNotifier = ref.read(canvasStateProvider.notifier);
     final canvasDisplaySize = widget.canvasDisplaySize;
     final double scale = canvasDisplaySize.width / canvasState.canvasSize.width;
-    return GestureDetector(
-      onTapUp: (details) {
-        final tapLocalPosition = details.localPosition;
-        final tapPosition = tapLocalPosition / scale;
-        final selectedLayer = canvasState.layers.firstWhereOrNull(
-          (layer) => layer.id == selectedLayerId,
-        );
-        if (_isTapOnDeleteHandle(selectedLayer, tapPosition, scale)) {
-          canvasNotifier.removeLayer(selectedLayer!.id);
-          ref.read(selectedLayerProvider.notifier).state = nextEditableLayerId(
-            canvasState.layers,
-            currentLayerId: selectedLayer.id,
-          );
-          _clearTapTracking();
-          return;
+    final inlineTextLayer = canvasState.layers.firstWhereOrNull(
+      (layer) => layer.id == _inlineTextEditingLayerId,
+    );
+    if (inlineTextLayer is! TextLayer && _inlineTextEditingLayerId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _finishInlineTextEditing(commit: false);
         }
+      });
+    }
 
-        final currentSelectedId = ref.read(selectedLayerProvider);
-        final tappedLayer = _findTopmostEditableLayer(
-          canvasState.layers,
-          tapPosition,
-        );
-        if (_isTextLayerDoubleTap(tappedLayer, tapLocalPosition)) {
-          final tappedTextLayer = tappedLayer as TextLayer;
-          ref.read(selectedLayerProvider.notifier).state = tappedTextLayer.id;
-          _clearTapTracking();
-          showModalBottomSheet<void>(
-            context: context,
-            builder: (context) => const TextEditorPanel(),
-          );
-          return;
-        }
-
-        if (tappedLayer != null) {
-          if (tappedLayer.id == currentSelectedId) {
-            ref.read(selectedLayerProvider.notifier).state = null;
-          } else {
-            ref.read(selectedLayerProvider.notifier).state = tappedLayer.id;
-          }
-        } else {
-          ref.read(selectedLayerProvider.notifier).state = null;
-        }
-        _trackTap(tappedLayer, tapLocalPosition);
-      },
-      onScaleStart: (details) {
-        final selectedId = ref.read(selectedLayerProvider);
-        if (selectedId != null) {
-          final layer = canvasState.layers.firstWhere(
-            (l) => l.id == selectedId,
-          );
-          if (layer.isLocked) {
-            _initialLayerState = null;
-            _initialFocalPoint = null;
-            _activeSnapGuides = const [];
-            return;
-          }
-          _initialLayerState = canvasState.layers.firstWhere(
-            (l) => l.id == selectedId,
-          );
-          _initialFocalPoint = details.localFocalPoint;
-        }
-      },
-      onScaleUpdate: (details) {
-        final selectedId = ref.read(selectedLayerProvider);
-        final currentLayer = canvasState.layers.firstWhereOrNull(
-          (l) => l.id == selectedId,
-        );
-        if (currentLayer == null ||
-            _initialLayerState == null ||
-            _initialFocalPoint == null)
-          return;
-        if (currentLayer is BackgroundLayer) return;
-        final newScale = _initialLayerState!.scale * details.scale;
-        final newRotation = _initialLayerState!.rotation + details.rotation;
-        final initialFocalPointInCanvas = _initialFocalPoint! / scale;
-        final totalTranslationInCanvas =
-            (details.localFocalPoint - _initialFocalPoint!) / scale;
-        final initialCenter = _initialLayerState!.rect.center;
-        final initialVector = initialCenter - initialFocalPointInCanvas;
-        final r = details.rotation;
-        final rotatedVector = Offset(
-          initialVector.dx * cos(r) - initialVector.dy * sin(r),
-          initialVector.dx * sin(r) + initialVector.dy * cos(r),
-        );
-        final scaledRotatedVector = rotatedVector * details.scale;
-        final finalNewCenter =
-            initialFocalPointInCanvas +
-            scaledRotatedVector +
-            totalTranslationInCanvas;
-        final newRect = Rect.fromCenter(
-          center: finalNewCenter,
-          width: _initialLayerState!.rect.width,
-          height: _initialLayerState!.rect.height,
-        );
-        final shouldSnap = shouldSnapForTransform(
-          scaleDelta: details.scale,
-          rotationDelta: details.rotation,
-        );
-        final snapResult = shouldSnap
-            ? applySnapToRect(
-                newRect,
-                currentLayer,
+    return Stack(
+      children: [
+        GestureDetector(
+          onTapUp: (details) {
+            final tapLocalPosition = details.localPosition;
+            final tapPosition = tapLocalPosition / scale;
+            final selectedLayer = canvasState.layers.firstWhereOrNull(
+              (layer) => layer.id == selectedLayerId,
+            );
+            if (_isTapOnDeleteHandle(selectedLayer, tapPosition, scale)) {
+              _finishInlineTextEditing();
+              canvasNotifier.removeLayer(selectedLayer!.id);
+              ref
+                  .read(selectedLayerProvider.notifier)
+                  .state = nextEditableLayerId(
                 canvasState.layers,
-                canvasState.canvasSize,
-                scale,
-              )
-            : SnapResult(rect: newRect, guides: const []);
-        final updatedLayer = currentLayer.copyWith(
-          rect: snapResult.rect,
-          scale: newScale,
-          rotation: newRotation,
-        );
-        if (!_areSnapGuidesEqual(_activeSnapGuides, snapResult.guides)) {
-          setState(() {
-            _activeSnapGuides = snapResult.guides;
-          });
-        }
-        canvasNotifier.updateLayerLive(updatedLayer);
-      },
-      onScaleEnd: (details) {
-        final selectedId = ref.read(selectedLayerProvider);
-        if (selectedId != null && _initialLayerState != null) {
-          canvasNotifier.commitTransform(selectedId);
-        }
-        setState(() {
-          _initialLayerState = null;
-          _initialFocalPoint = null;
-          _activeSnapGuides = const [];
-        });
-      },
-      child: CustomPaint(
-        size: canvasDisplaySize,
-        painter: CanvasPainter(
-          canvasState: canvasState,
-          selectedLayerId: selectedLayerId,
-          snapGuides: _activeSnapGuides,
+                currentLayerId: selectedLayer.id,
+              );
+              _clearTapTracking();
+              return;
+            }
+
+            final currentSelectedId = ref.read(selectedLayerProvider);
+            final tappedLayer = _findTopmostEditableLayer(
+              canvasState.layers,
+              tapPosition,
+            );
+            if (_isTextLayerDoubleTap(tappedLayer, tapLocalPosition)) {
+              final tappedTextLayer = tappedLayer as TextLayer;
+              ref.read(selectedLayerProvider.notifier).state =
+                  tappedTextLayer.id;
+              _clearTapTracking();
+              _beginInlineTextEditing(tappedTextLayer, canvasState.canvasSize);
+              return;
+            }
+
+            _finishInlineTextEditing();
+            if (tappedLayer != null) {
+              if (tappedLayer.id == currentSelectedId) {
+                ref.read(selectedLayerProvider.notifier).state = null;
+              } else {
+                ref.read(selectedLayerProvider.notifier).state = tappedLayer.id;
+              }
+            } else {
+              ref.read(selectedLayerProvider.notifier).state = null;
+            }
+            _trackTap(tappedLayer, tapLocalPosition);
+          },
+          onScaleStart: (details) {
+            _finishInlineTextEditing();
+            final selectedId = ref.read(selectedLayerProvider);
+            if (selectedId != null) {
+              final layer = canvasState.layers.firstWhere(
+                (l) => l.id == selectedId,
+              );
+              if (layer.isLocked) {
+                _initialLayerState = null;
+                _initialFocalPoint = null;
+                _activeSnapGuides = const [];
+                return;
+              }
+              _initialLayerState = canvasState.layers.firstWhere(
+                (l) => l.id == selectedId,
+              );
+              _initialFocalPoint = details.localFocalPoint;
+            }
+          },
+          onScaleUpdate: (details) {
+            final selectedId = ref.read(selectedLayerProvider);
+            final currentLayer = canvasState.layers.firstWhereOrNull(
+              (l) => l.id == selectedId,
+            );
+            if (currentLayer == null ||
+                _initialLayerState == null ||
+                _initialFocalPoint == null)
+              return;
+            if (currentLayer is BackgroundLayer) return;
+            if (imageCropModeEnabled &&
+                currentLayer is ImageLayer &&
+                _initialLayerState is ImageLayer) {
+              final translationInCanvas =
+                  (details.localFocalPoint - _initialFocalPoint!) / scale;
+              final updatedLayer = applyCropGestureToImageLayer(
+                initialLayer: _initialLayerState as ImageLayer,
+                translationInCanvas: translationInCanvas,
+                scaleDelta: details.scale,
+              );
+              if (_activeSnapGuides.isNotEmpty) {
+                setState(() {
+                  _activeSnapGuides = const [];
+                });
+              }
+              canvasNotifier.updateLayerLive(updatedLayer);
+              return;
+            }
+            final newScale = _initialLayerState!.scale * details.scale;
+            final newRotation = _initialLayerState!.rotation + details.rotation;
+            final initialFocalPointInCanvas = _initialFocalPoint! / scale;
+            final totalTranslationInCanvas =
+                (details.localFocalPoint - _initialFocalPoint!) / scale;
+            final initialCenter = _initialLayerState!.rect.center;
+            final initialVector = initialCenter - initialFocalPointInCanvas;
+            final r = details.rotation;
+            final rotatedVector = Offset(
+              initialVector.dx * cos(r) - initialVector.dy * sin(r),
+              initialVector.dx * sin(r) + initialVector.dy * cos(r),
+            );
+            final scaledRotatedVector = rotatedVector * details.scale;
+            final finalNewCenter =
+                initialFocalPointInCanvas +
+                scaledRotatedVector +
+                totalTranslationInCanvas;
+            final newRect = Rect.fromCenter(
+              center: finalNewCenter,
+              width: _initialLayerState!.rect.width,
+              height: _initialLayerState!.rect.height,
+            );
+            final shouldSnap = shouldSnapForTransform(
+              scaleDelta: details.scale,
+              rotationDelta: details.rotation,
+            );
+            final snapResult = shouldSnap
+                ? applySnapToRect(
+                    newRect,
+                    currentLayer,
+                    canvasState.layers,
+                    canvasState.canvasSize,
+                    scale,
+                  )
+                : SnapResult(rect: newRect, guides: const []);
+            final updatedLayer = currentLayer.copyWith(
+              rect: snapResult.rect,
+              scale: newScale,
+              rotation: newRotation,
+            );
+            if (!_areSnapGuidesEqual(_activeSnapGuides, snapResult.guides)) {
+              setState(() {
+                _activeSnapGuides = snapResult.guides;
+              });
+            }
+            canvasNotifier.updateLayerLive(updatedLayer);
+          },
+          onScaleEnd: (details) {
+            final selectedId = ref.read(selectedLayerProvider);
+            if (selectedId != null && _initialLayerState != null) {
+              canvasNotifier.commitTransform(selectedId);
+            }
+            setState(() {
+              _initialLayerState = null;
+              _initialFocalPoint = null;
+              _activeSnapGuides = const [];
+            });
+          },
+          child: CustomPaint(
+            size: canvasDisplaySize,
+            painter: CanvasPainter(
+              canvasState: canvasState,
+              selectedLayerId: selectedLayerId,
+              snapGuides: _activeSnapGuides,
+            ),
+          ),
+        ),
+        if (inlineTextLayer is TextLayer)
+          _buildInlineTextEditor(
+            context,
+            inlineTextLayer,
+            canvasState.canvasSize,
+            scale,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildInlineTextEditor(
+    BuildContext context,
+    TextLayer layer,
+    Size canvasSize,
+    double canvasScale,
+  ) {
+    final controller = _inlineTextController;
+    final focusNode = _inlineTextFocusNode;
+    if (controller == null || focusNode == null) {
+      return const SizedBox.shrink();
+    }
+
+    final screenRect = Rect.fromLTWH(
+      layer.rect.left * canvasScale,
+      layer.rect.top * canvasScale,
+      layer.rect.width * canvasScale,
+      layer.rect.height * canvasScale,
+    );
+
+    return Positioned(
+      left: screenRect.left,
+      top: screenRect.top,
+      width: screenRect.width,
+      height: screenRect.height,
+      child: IgnorePointer(
+        ignoring: false,
+        child: Transform.rotate(
+          angle: layer.rotation,
+          alignment: Alignment.center,
+          child: Transform.scale(
+            scale: layer.scale,
+            alignment: Alignment.center,
+            child: Material(
+              color: Colors.transparent,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                child: TextField(
+                  key: const ValueKey('inline-text-editor'),
+                  controller: controller,
+                  focusNode: focusNode,
+                  style: layer.style.copyWith(
+                    fontSize: (layer.style.fontSize ?? 16) * canvasScale,
+                  ),
+                  textAlign: layer.textAlign,
+                  maxLines: null,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(8),
+                  ),
+                  onChanged: (_) => _syncInlineTextEdit(),
+                  onTapOutside: (_) => _finishInlineTextEditing(),
+                  onSubmitted: (_) => _finishInlineTextEditing(),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -327,6 +497,74 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
     _lastTapAt = null;
     _lastTapLocalPosition = null;
     _lastTappedTextLayerId = null;
+  }
+
+  void _beginInlineTextEditing(TextLayer layer, Size canvasSize) {
+    _disposeInlineTextEditingResources();
+    final controller = TextEditingController(text: layer.text);
+    final focusNode = FocusNode();
+    focusNode.addListener(() {
+      if (!focusNode.hasFocus && mounted) {
+        _finishInlineTextEditing();
+      }
+    });
+    setState(() {
+      _inlineTextEditingLayerId = layer.id;
+      _inlineTextController = controller;
+      _inlineTextFocusNode = focusNode;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      focusNode.requestFocus();
+      controller.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: controller.text.length,
+      );
+      _syncInlineTextEdit(canvasSize: canvasSize);
+    });
+  }
+
+  void _syncInlineTextEdit({Size? canvasSize}) {
+    final editingLayerId = _inlineTextEditingLayerId;
+    final controller = _inlineTextController;
+    if (editingLayerId == null || controller == null) return;
+
+    final layer = ref
+        .read(canvasStateProvider)
+        .layers
+        .firstWhereOrNull((candidate) => candidate.id == editingLayerId);
+    if (layer is! TextLayer) return;
+
+    final resolvedCanvasSize =
+        canvasSize ?? ref.read(canvasStateProvider).canvasSize;
+    ref
+        .read(canvasStateProvider.notifier)
+        .updateLayerLive(
+          fitTextLayerToContent(
+            layer,
+            text: controller.text,
+            canvasWidth: resolvedCanvasSize.width,
+          ),
+        );
+  }
+
+  void _finishInlineTextEditing({bool commit = true}) {
+    if (commit) {
+      _syncInlineTextEdit();
+      ref.read(canvasStateProvider.notifier).commitLiveUpdate();
+    }
+    _disposeInlineTextEditingResources();
+    if (!mounted) return;
+    setState(() {
+      _inlineTextEditingLayerId = null;
+    });
+  }
+
+  void _disposeInlineTextEditingResources() {
+    _inlineTextFocusNode?.dispose();
+    _inlineTextController?.dispose();
+    _inlineTextFocusNode = null;
+    _inlineTextController = null;
   }
 
   bool _areSnapGuidesEqual(List<SnapGuide> a, List<SnapGuide> b) {

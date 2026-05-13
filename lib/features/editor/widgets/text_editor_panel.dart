@@ -87,7 +87,14 @@ class TextEditorPanel extends ConsumerWidget {
                 minLines: 1,
                 onChanged: (newText) {
                   canvasNotifier.updateLayerLive(
-                    textLayer.copyWith(text: newText),
+                    fitTextLayerToContent(
+                      textLayer,
+                      text: newText,
+                      canvasWidth: ref
+                          .read(canvasStateProvider)
+                          .canvasSize
+                          .width,
+                    ),
                   );
                 },
                 onTapOutside: (_) {

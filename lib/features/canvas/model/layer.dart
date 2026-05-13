@@ -80,6 +80,32 @@ Size _calculateTextSize(
   return textPainter.size;
 }
 
+TextLayer fitTextLayerToContent(
+  TextLayer layer, {
+  String? text,
+  double? canvasWidth,
+}) {
+  final resolvedText = text ?? layer.text;
+  final availableWidth = canvasWidth == null
+      ? double.infinity
+      : (canvasWidth - layer.rect.left - 16.0).clamp(1.0, double.infinity);
+  final nextSize = _calculateTextSize(
+    resolvedText,
+    layer.style,
+    layer.textAlign,
+    availableWidth,
+  );
+  return layer.copyWith(
+    text: resolvedText,
+    rect: Rect.fromLTWH(
+      layer.rect.left,
+      layer.rect.top,
+      nextSize.width,
+      nextSize.height,
+    ),
+  );
+}
+
 @immutable
 abstract class Layer {
   const Layer({

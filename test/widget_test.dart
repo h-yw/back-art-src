@@ -7,7 +7,6 @@ import 'package:BackArt/features/canvas/model/layer.dart';
 import 'package:BackArt/features/canvas/state/canvas_state.dart';
 import 'package:BackArt/features/canvas/view/canvas_view.dart';
 import 'package:BackArt/features/editor/state/editor_state.dart';
-import 'package:BackArt/features/editor/widgets/text_editor_panel.dart';
 import 'package:BackArt/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -419,7 +418,7 @@ void main() {
     );
   });
 
-  testWidgets('double tap on a text layer opens the text editor panel', (
+  testWidgets('double tap on a text layer opens inline text editing', (
     tester,
   ) async {
     final container = ProviderContainer(
@@ -445,8 +444,18 @@ void main() {
     await tester.tapAt(const Offset(50, 37.5));
     await tester.pumpAndSettle();
 
-    expect(find.byType(TextEditorPanel), findsOneWidget);
+    expect(find.byKey(const ValueKey('inline-text-editor')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('inline-text-editor')),
+      'Edited inline',
+    );
+    await tester.pump();
+
     expect(container.read(selectedLayerProvider), 'text');
+    expect(
+      (container.read(canvasStateProvider).layers[1] as TextLayer).text,
+      'Edited inline',
+    );
   });
 
   testWidgets('single tap switches layers without waiting for double tap', (
@@ -522,6 +531,26 @@ void main() {
     );
   });
 
+  test('updates image crop framing from canvas gestures', () async {
+    final initialLayer = ImageLayer(
+      id: 'image',
+      image: await createSizedTestImage(200, 100),
+      rect: const Rect.fromLTWH(100, 100, 100, 100),
+      cropScale: 2.0,
+      cropAlignment: Alignment.center,
+    );
+
+    final updatedLayer = applyCropGestureToImageLayer(
+      initialLayer: initialLayer,
+      translationInCanvas: const Offset(25, 10),
+      scaleDelta: 1.5,
+    );
+
+    expect(updatedLayer.cropScale, 3.0);
+    expect(updatedLayer.cropAlignment.x, closeTo(-0.1, 0.01));
+    expect(updatedLayer.cropAlignment.y, closeTo(-0.1, 0.01));
+  });
+
   testWidgets('renders the editor toolbar', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: BackArtApp()));
 
@@ -550,9 +579,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('发布画布'), findsOneWidget);
-    expect(find.text('快速分享'), findsOneWidget);
+    expect(find.text('PNG'), findsOneWidget);
+    expect(find.text('JPG'), findsOneWidget);
+    expect(find.text('标准'), findsOneWidget);
     expect(find.text('高清'), findsOneWidget);
-    expect(find.text('打印级'), findsOneWidget);
+    expect(find.text('超清'), findsOneWidget);
+    expect(find.textContaining('输出 '), findsOneWidget);
     expect(find.text('保存到相册'), findsOneWidget);
     expect(find.text('分享'), findsOneWidget);
   });
@@ -609,6 +641,10 @@ void main() {
     expect(find.text('替换后适应'), findsOneWidget);
     expect(find.text('替换后铺满'), findsOneWidget);
     expect(find.text('取景'), findsOneWidget);
+    expect(find.text('进入取景模式'), findsOneWidget);
+    await tester.tap(find.text('进入取景模式'));
+    await tester.pumpAndSettle();
+    expect(find.text('结束取景模式'), findsOneWidget);
     expect(find.text('重置取景'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('适应画布'), 200);
     await tester.pumpAndSettle();

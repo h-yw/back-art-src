@@ -43,6 +43,7 @@ class ImageEditorPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedLayerId = ref.watch(selectedLayerProvider);
+    final cropModeEnabled = ref.watch(imageCropModeProvider);
     final canvasNotifier = ref.read(canvasStateProvider.notifier);
     final layer = ref
         .watch(canvasStateProvider)
@@ -110,6 +111,18 @@ class ImageEditorPanel extends ConsumerWidget {
         const SizedBox(height: 24),
         Text('取景', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
+        FilledButton.tonalIcon(
+          onPressed: () {
+            ref.read(imageCropModeProvider.notifier).state = !cropModeEnabled;
+          },
+          icon: Icon(
+            cropModeEnabled
+                ? Icons.pan_tool_alt_outlined
+                : Icons.crop_free_outlined,
+          ),
+          label: Text(cropModeEnabled ? '结束取景模式' : '进入取景模式'),
+        ),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(

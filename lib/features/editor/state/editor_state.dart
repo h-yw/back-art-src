@@ -30,3 +30,5 @@ final selectedLayerProvider = StateProvider<String?>((ref) {
   );
   return firstEditableLayer.id;
 });
+
+final imageCropModeProvider = StateProvider<bool>((ref) => false);
