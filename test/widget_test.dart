@@ -375,6 +375,34 @@ void main() {
     expect(container.read(selectedLayerProvider), isNull);
   });
 
+  testWidgets('delete handle has a larger tap target', (tester) async {
+    final container = ProviderContainer(
+      overrides: [
+        initialCanvasStateProvider.overrideWithValue(
+          CanvasState(
+            layers: [
+              const BackgroundLayer(id: 'background'),
+              TextLayer.initial().copyWith(
+                id: 'text',
+                rect: const Rect.fromLTWH(100, 100, 200, 100),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(buildCanvasTestApp(container));
+    await tester.tapAt(const Offset(41, 25));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(
+      container.read(canvasStateProvider).layers.whereType<TextLayer>(),
+      isEmpty,
+    );
+  });
+
   testWidgets('double tap on a text layer opens the text editor panel', (
     tester,
   ) async {
@@ -403,6 +431,39 @@ void main() {
 
     expect(find.byType(TextEditorPanel), findsOneWidget);
     expect(container.read(selectedLayerProvider), 'text');
+  });
+
+  testWidgets('single tap switches layers without waiting for double tap', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        initialCanvasStateProvider.overrideWithValue(
+          CanvasState(
+            layers: [
+              const BackgroundLayer(id: 'background'),
+              TextLayer.initial().copyWith(
+                id: 'first',
+                rect: const Rect.fromLTWH(100, 100, 200, 100),
+              ),
+              TextLayer.initial().copyWith(
+                id: 'second',
+                rect: const Rect.fromLTWH(500, 100, 200, 100),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(buildCanvasTestApp(container));
+    expect(container.read(selectedLayerProvider), 'first');
+
+    await tester.tapAt(const Offset(140, 37.5));
+    await tester.pump();
+
+    expect(container.read(selectedLayerProvider), 'second');
   });
 
   testWidgets('renders the editor toolbar', (tester) async {

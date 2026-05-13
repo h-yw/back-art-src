@@ -8,6 +8,9 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 
 const double kHandleRadius = 6.0;
+const double kHandleTapTargetRadius = 20.0;
+const Duration kTextDoubleTapThreshold = Duration(milliseconds: 280);
+const double kDoubleTapSlop = 24.0;
 
 class CanvasView extends ConsumerStatefulWidget {
   const CanvasView({Key? key, required this.canvasDisplaySize})
@@ -20,7 +23,9 @@ class CanvasView extends ConsumerStatefulWidget {
 class _CanvasViewState extends ConsumerState<CanvasView> {
   Layer? _initialLayerState;
   Offset? _initialFocalPoint;
-  Offset? _lastDoubleTapPosition;
+  DateTime? _lastTapAt;
+  Offset? _lastTapLocalPosition;
+  String? _lastTappedTextLayerId;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +36,8 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
     final double scale = canvasDisplaySize.width / canvasState.canvasSize.width;
     return GestureDetector(
       onTapUp: (details) {
-        final tapPosition = details.localPosition / scale;
+        final tapLocalPosition = details.localPosition;
+        final tapPosition = tapLocalPosition / scale;
         final selectedLayer = canvasState.layers.firstWhereOrNull(
           (layer) => layer.id == selectedLayerId,
         );
@@ -41,6 +47,7 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
             canvasState.layers,
             currentLayerId: selectedLayer.id,
           );
+          _clearTapTracking();
           return;
         }
 
@@ -49,6 +56,17 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
           canvasState.layers,
           tapPosition,
         );
+        if (_isTextLayerDoubleTap(tappedLayer, tapLocalPosition)) {
+          final tappedTextLayer = tappedLayer as TextLayer;
+          ref.read(selectedLayerProvider.notifier).state = tappedTextLayer.id;
+          _clearTapTracking();
+          showModalBottomSheet<void>(
+            context: context,
+            builder: (context) => const TextEditorPanel(),
+          );
+          return;
+        }
+
         if (tappedLayer != null) {
           if (tappedLayer.id == currentSelectedId) {
             ref.read(selectedLayerProvider.notifier).state = null;
@@ -58,25 +76,7 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
         } else {
           ref.read(selectedLayerProvider.notifier).state = null;
         }
-      },
-      onDoubleTapDown: (details) {
-        _lastDoubleTapPosition = details.localPosition / scale;
-      },
-      onDoubleTap: () {
-        final doubleTapPosition = _lastDoubleTapPosition;
-        if (doubleTapPosition == null) return;
-
-        final tappedTextLayer = _findTopmostTextLayer(
-          canvasState.layers,
-          doubleTapPosition,
-        );
-        if (tappedTextLayer == null || tappedTextLayer.isLocked) return;
-
-        ref.read(selectedLayerProvider.notifier).state = tappedTextLayer.id;
-        showModalBottomSheet<void>(
-          context: context,
-          builder: (context) => const TextEditorPanel(),
-        );
+        _trackTap(tappedLayer, tapLocalPosition);
       },
       onScaleStart: (details) {
         final selectedId = ref.read(selectedLayerProvider);
@@ -161,13 +161,39 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
     });
   }
 
-  TextLayer? _findTopmostTextLayer(List<Layer> layers, Offset tapPosition) {
-    final layer = layers.lastWhereOrNull((layer) {
-      return layer is TextLayer &&
-          layer.isVisible &&
-          _isTapOnLayer(layer, tapPosition);
-    });
-    return layer is TextLayer ? layer : null;
+  bool _isTextLayerDoubleTap(Layer? tappedLayer, Offset tapLocalPosition) {
+    if (tappedLayer is! TextLayer || tappedLayer.isLocked) {
+      return false;
+    }
+
+    final lastTapAt = _lastTapAt;
+    final lastTapLocalPosition = _lastTapLocalPosition;
+    if (lastTapAt == null || lastTapLocalPosition == null) {
+      return false;
+    }
+
+    final isWithinTimeout =
+        DateTime.now().difference(lastTapAt) <= kTextDoubleTapThreshold;
+    final isSameLayer = _lastTappedTextLayerId == tappedLayer.id;
+    final isWithinDistance =
+        (tapLocalPosition - lastTapLocalPosition).distance <= kDoubleTapSlop;
+    return isWithinTimeout && isSameLayer && isWithinDistance;
+  }
+
+  void _trackTap(Layer? tappedLayer, Offset tapLocalPosition) {
+    if (tappedLayer is TextLayer && !tappedLayer.isLocked) {
+      _lastTapAt = DateTime.now();
+      _lastTapLocalPosition = tapLocalPosition;
+      _lastTappedTextLayerId = tappedLayer.id;
+      return;
+    }
+    _clearTapTracking();
+  }
+
+  void _clearTapTracking() {
+    _lastTapAt = null;
+    _lastTapLocalPosition = null;
+    _lastTappedTextLayerId = null;
   }
 
   bool _isTapOnDeleteHandle(
@@ -184,7 +210,7 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
 
     final transformedTapPosition = _transformToLayerSpace(layer, tapPosition);
     final handleRadiusInLayerSpace =
-        kHandleRadius / (canvasScale * layer.scale);
+        kHandleTapTargetRadius / (canvasScale * layer.scale);
     return (transformedTapPosition - layer.rect.topLeft).distance <=
         handleRadiusInLayerSpace;
   }
