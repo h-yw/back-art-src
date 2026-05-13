@@ -27,6 +27,43 @@ void resetLayerIdCounterForTest([int value = 0]) {
   _idCounter = value;
 }
 
+Rect sourceRectForImageFrame({
+  required Size imageSize,
+  required Size frameSize,
+  double cropScale = 1.0,
+  Alignment cropAlignment = Alignment.center,
+}) {
+  if (imageSize.width <= 0 ||
+      imageSize.height <= 0 ||
+      frameSize.width <= 0 ||
+      frameSize.height <= 0) {
+    return Rect.fromLTWH(0, 0, imageSize.width, imageSize.height);
+  }
+
+  final frameAspect = frameSize.width / frameSize.height;
+  final imageAspect = imageSize.width / imageSize.height;
+
+  late double baseWidth;
+  late double baseHeight;
+  if (imageAspect > frameAspect) {
+    baseHeight = imageSize.height;
+    baseWidth = baseHeight * frameAspect;
+  } else {
+    baseWidth = imageSize.width;
+    baseHeight = baseWidth / frameAspect;
+  }
+
+  final safeCropScale = cropScale < 1.0 ? 1.0 : cropScale;
+  final cropWidth = (baseWidth / safeCropScale).clamp(1.0, imageSize.width);
+  final cropHeight = (baseHeight / safeCropScale).clamp(1.0, imageSize.height);
+  final maxLeft = imageSize.width - cropWidth;
+  final maxTop = imageSize.height - cropHeight;
+  final left = ((cropAlignment.x + 1) / 2.0) * maxLeft;
+  final top = ((cropAlignment.y + 1) / 2.0) * maxTop;
+
+  return Rect.fromLTWH(left, top, cropWidth, cropHeight);
+}
+
 Size _calculateTextSize(
   String text,
   TextStyle style,
@@ -232,6 +269,8 @@ class ImageLayer extends Layer {
     double rotation = 0.0,
     double scale = 1.0,
     double opacity = 1.0,
+    this.cropScale = 1.0,
+    this.cropAlignment = Alignment.center,
     bool isVisible = true,
     bool isLocked = false,
   }) : super(
@@ -259,6 +298,8 @@ class ImageLayer extends Layer {
   }
 
   final ui.Image image;
+  final double cropScale;
+  final Alignment cropAlignment;
 
   @override
   ImageLayer copyWith({
@@ -272,6 +313,8 @@ class ImageLayer extends Layer {
     Alignment? alignment,
     bool clearAlignment = false,
     ui.Image? image,
+    double? cropScale,
+    Alignment? cropAlignment,
   }) {
     return ImageLayer(
       id: id ?? this.id,
@@ -281,6 +324,8 @@ class ImageLayer extends Layer {
       scale: scale ?? this.scale,
       opacity: opacity ?? this.opacity,
       image: image ?? this.image,
+      cropScale: cropScale ?? this.cropScale,
+      cropAlignment: cropAlignment ?? this.cropAlignment,
       isVisible: isVisible ?? this.isVisible,
       isLocked: isLocked ?? this.isLocked,
     );

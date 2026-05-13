@@ -165,6 +165,22 @@ void main() {
     expect(imageLayer.scale, 1.0);
   });
 
+  test('computes image source rects for framing controls', () {
+    final sourceRect = sourceRectForImageFrame(
+      imageSize: const Size(200, 100),
+      frameSize: const Size(100, 100),
+    );
+    expect(sourceRect, const Rect.fromLTWH(50, 0, 100, 100));
+
+    final zoomedRect = sourceRectForImageFrame(
+      imageSize: const Size(200, 100),
+      frameSize: const Size(100, 100),
+      cropScale: 2.0,
+      cropAlignment: Alignment.topLeft,
+    );
+    expect(zoomedRect, const Rect.fromLTWH(0, 0, 50, 50));
+  });
+
   test('resets image layers to their intrinsic size', () async {
     final notifier = CanvasStateNotifier(
       initialState: CanvasState(
@@ -592,6 +608,10 @@ void main() {
     expect(find.text('保持当前框'), findsOneWidget);
     expect(find.text('替换后适应'), findsOneWidget);
     expect(find.text('替换后铺满'), findsOneWidget);
+    expect(find.text('取景'), findsOneWidget);
+    expect(find.text('重置取景'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('适应画布'), 200);
+    await tester.pumpAndSettle();
     expect(find.text('适应画布'), findsOneWidget);
     expect(find.text('铺满画布'), findsOneWidget);
     expect(find.text('原始尺寸'), findsOneWidget);

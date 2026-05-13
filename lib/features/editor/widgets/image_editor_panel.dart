@@ -56,6 +56,19 @@ class ImageEditorPanel extends ConsumerWidget {
       return const Center(child: Text('Please select an image layer.'));
     }
 
+    final imageSize = Size(
+      layer.image.width.toDouble(),
+      layer.image.height.toDouble(),
+    );
+    final sourceRect = sourceRectForImageFrame(
+      imageSize: imageSize,
+      frameSize: layer.rect.size,
+      cropScale: layer.cropScale,
+      cropAlignment: layer.cropAlignment,
+    );
+    final canPanHorizontally = sourceRect.width < imageSize.width - 0.5;
+    final canPanVertically = sourceRect.height < imageSize.height - 0.5;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -93,6 +106,85 @@ class ImageEditorPanel extends ConsumerWidget {
               label: const Text('替换后铺满'),
             ),
           ],
+        ),
+        const SizedBox(height: 24),
+        Text('取景', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Slider(
+                value: layer.cropScale.clamp(1.0, 4.0),
+                min: 1.0,
+                max: 4.0,
+                divisions: 30,
+                label: '${layer.cropScale.toStringAsFixed(1)}x',
+                onChanged: (value) {
+                  canvasNotifier.updateLayerLive(
+                    layer.copyWith(cropScale: value),
+                  );
+                },
+                onChangeEnd: (_) {
+                  canvasNotifier.commitLiveUpdate();
+                },
+              ),
+            ),
+            SizedBox(
+              width: 56,
+              child: Text(
+                '${layer.cropScale.toStringAsFixed(1)}x',
+                textAlign: TextAlign.end,
+              ),
+            ),
+          ],
+        ),
+        if (canPanHorizontally) ...[
+          const SizedBox(height: 8),
+          Text('水平取景', style: Theme.of(context).textTheme.bodyMedium),
+          Slider(
+            value: layer.cropAlignment.x.clamp(-1.0, 1.0),
+            min: -1.0,
+            max: 1.0,
+            divisions: 20,
+            label: layer.cropAlignment.x.toStringAsFixed(1),
+            onChanged: (value) {
+              canvasNotifier.updateLayerLive(
+                layer.copyWith(
+                  cropAlignment: Alignment(value, layer.cropAlignment.y),
+                ),
+              );
+            },
+            onChangeEnd: (_) => canvasNotifier.commitLiveUpdate(),
+          ),
+        ],
+        if (canPanVertically) ...[
+          const SizedBox(height: 8),
+          Text('垂直取景', style: Theme.of(context).textTheme.bodyMedium),
+          Slider(
+            value: layer.cropAlignment.y.clamp(-1.0, 1.0),
+            min: -1.0,
+            max: 1.0,
+            divisions: 20,
+            label: layer.cropAlignment.y.toStringAsFixed(1),
+            onChanged: (value) {
+              canvasNotifier.updateLayerLive(
+                layer.copyWith(
+                  cropAlignment: Alignment(layer.cropAlignment.x, value),
+                ),
+              );
+            },
+            onChangeEnd: (_) => canvasNotifier.commitLiveUpdate(),
+          ),
+        ],
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () {
+            canvasNotifier.updateLayer(
+              layer.copyWith(cropScale: 1.0, cropAlignment: Alignment.center),
+            );
+          },
+          icon: const Icon(Icons.center_focus_strong_outlined),
+          label: const Text('重置取景'),
         ),
         const SizedBox(height: 24),
         Text('布局', style: Theme.of(context).textTheme.titleMedium),

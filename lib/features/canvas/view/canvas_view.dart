@@ -520,14 +520,19 @@ class CanvasPainter extends CustomPainter {
       targetRect = layer.alignment!.inscribe(layer.rect.size, canvasRect);
     }
 
-    canvas.drawImageRect(
-      layer.image,
-      Rect.fromLTWH(
-        0,
-        0,
+    final sourceRect = sourceRectForImageFrame(
+      imageSize: Size(
         layer.image.width.toDouble(),
         layer.image.height.toDouble(),
       ),
+      frameSize: targetRect.size,
+      cropScale: layer.cropScale,
+      cropAlignment: layer.cropAlignment,
+    );
+
+    canvas.drawImageRect(
+      layer.image,
+      sourceRect,
       targetRect,
       Paint()
         ..color = Colors.white.withValues(alpha: layer.opacity)

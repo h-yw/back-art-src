@@ -117,6 +117,8 @@ class CanvasDraftRepository {
         ...base,
         'type': 'image',
         'imageBytes': await _imageToBase64(layer.image),
+        'cropScale': layer.cropScale,
+        'cropAlignment': _alignmentToJson(layer.cropAlignment),
       },
       ShapeLayer() => {
         ...base,
@@ -182,6 +184,9 @@ class CanvasDraftRepository {
           rotation: rotation,
           scale: scale,
           opacity: opacity,
+          cropScale: _doubleFromJson(json['cropScale']) ?? 1.0,
+          cropAlignment:
+              _alignmentFromJson(json['cropAlignment']) ?? Alignment.center,
           isVisible: isVisible,
           isLocked: isLocked,
         );

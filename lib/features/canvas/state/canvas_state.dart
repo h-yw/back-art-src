@@ -312,6 +312,8 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
             ? imageLayer.alignment
             : null,
         clearAlignment: mode != ImageReplacementMode.preserveFrame,
+        cropScale: 1.0,
+        cropAlignment: Alignment.center,
       ),
     );
     return true;
@@ -338,6 +340,8 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
         scale: 1.0,
         alignment: null,
         clearAlignment: true,
+        cropScale: 1.0,
+        cropAlignment: Alignment.center,
       ),
     );
     return true;
@@ -362,6 +366,8 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
         scale: 1.0,
         alignment: null,
         clearAlignment: true,
+        cropScale: 1.0,
+        cropAlignment: Alignment.center,
       ),
     );
     return true;
