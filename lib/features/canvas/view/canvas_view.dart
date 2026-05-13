@@ -11,6 +11,104 @@ const double kHandleRadius = 6.0;
 const double kHandleTapTargetRadius = 20.0;
 const Duration kTextDoubleTapThreshold = Duration(milliseconds: 280);
 const double kDoubleTapSlop = 24.0;
+const double kSnapThresholdInScreenPixels = 10.0;
+
+enum SnapGuideAxis { horizontal, vertical }
+
+class SnapGuide {
+  const SnapGuide({required this.axis, required this.coordinate});
+
+  final SnapGuideAxis axis;
+  final double coordinate;
+}
+
+class SnapResult {
+  const SnapResult({required this.rect, required this.guides});
+
+  final Rect rect;
+  final List<SnapGuide> guides;
+}
+
+@visibleForTesting
+SnapResult applySnapToRect(
+  Rect tentativeRect,
+  Layer currentLayer,
+  List<Layer> layers,
+  Size canvasSize,
+  double canvasScale,
+) {
+  final threshold = kSnapThresholdInScreenPixels / canvasScale;
+  final canvasXTargets = [0.0, canvasSize.width / 2, canvasSize.width];
+  final canvasYTargets = [0.0, canvasSize.height / 2, canvasSize.height];
+  final otherLayers = layers.where((layer) {
+    return layer.id != currentLayer.id &&
+        layer is! BackgroundLayer &&
+        layer.isVisible;
+  });
+
+  final xTargets = [
+    ...canvasXTargets,
+    for (final layer in otherLayers) ...[
+      layer.rect.left,
+      layer.rect.center.dx,
+      layer.rect.right,
+    ],
+  ];
+  final yTargets = [
+    ...canvasYTargets,
+    for (final layer in otherLayers) ...[
+      layer.rect.top,
+      layer.rect.center.dy,
+      layer.rect.bottom,
+    ],
+  ];
+
+  final sourceXs = [
+    tentativeRect.left,
+    tentativeRect.center.dx,
+    tentativeRect.right,
+  ];
+  final sourceYs = [
+    tentativeRect.top,
+    tentativeRect.center.dy,
+    tentativeRect.bottom,
+  ];
+
+  double? dx;
+  double? snappedX;
+  for (final source in sourceXs) {
+    for (final target in xTargets) {
+      final delta = target - source;
+      if (delta.abs() > threshold) continue;
+      if (dx == null || delta.abs() < dx.abs()) {
+        dx = delta;
+        snappedX = target;
+      }
+    }
+  }
+
+  double? dy;
+  double? snappedY;
+  for (final source in sourceYs) {
+    for (final target in yTargets) {
+      final delta = target - source;
+      if (delta.abs() > threshold) continue;
+      if (dy == null || delta.abs() < dy.abs()) {
+        dy = delta;
+        snappedY = target;
+      }
+    }
+  }
+
+  final snappedRect = tentativeRect.shift(Offset(dx ?? 0, dy ?? 0));
+  final guides = <SnapGuide>[
+    if (snappedX != null)
+      SnapGuide(axis: SnapGuideAxis.vertical, coordinate: snappedX),
+    if (snappedY != null)
+      SnapGuide(axis: SnapGuideAxis.horizontal, coordinate: snappedY),
+  ];
+  return SnapResult(rect: snappedRect, guides: guides);
+}
 
 class CanvasView extends ConsumerStatefulWidget {
   const CanvasView({Key? key, required this.canvasDisplaySize})
@@ -26,6 +124,7 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
   DateTime? _lastTapAt;
   Offset? _lastTapLocalPosition;
   String? _lastTappedTextLayerId;
+  List<SnapGuide> _activeSnapGuides = const [];
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +186,7 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
           if (layer.isLocked) {
             _initialLayerState = null;
             _initialFocalPoint = null;
+            _activeSnapGuides = const [];
             return;
           }
           _initialLayerState = canvasState.layers.firstWhere(
@@ -127,11 +227,23 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
           width: _initialLayerState!.rect.width,
           height: _initialLayerState!.rect.height,
         );
+        final snapResult = applySnapToRect(
+          newRect,
+          currentLayer,
+          canvasState.layers,
+          canvasState.canvasSize,
+          scale,
+        );
         final updatedLayer = currentLayer.copyWith(
-          rect: newRect,
+          rect: snapResult.rect,
           scale: newScale,
           rotation: newRotation,
         );
+        if (!_areSnapGuidesEqual(_activeSnapGuides, snapResult.guides)) {
+          setState(() {
+            _activeSnapGuides = snapResult.guides;
+          });
+        }
         canvasNotifier.updateLayerLive(updatedLayer);
       },
       onScaleEnd: (details) {
@@ -139,14 +251,18 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
         if (selectedId != null && _initialLayerState != null) {
           canvasNotifier.commitTransform(selectedId);
         }
-        _initialLayerState = null;
-        _initialFocalPoint = null;
+        setState(() {
+          _initialLayerState = null;
+          _initialFocalPoint = null;
+          _activeSnapGuides = const [];
+        });
       },
       child: CustomPaint(
         size: canvasDisplaySize,
         painter: CanvasPainter(
           canvasState: canvasState,
           selectedLayerId: selectedLayerId,
+          snapGuides: _activeSnapGuides,
         ),
       ),
     );
@@ -196,6 +312,17 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
     _lastTappedTextLayerId = null;
   }
 
+  bool _areSnapGuidesEqual(List<SnapGuide> a, List<SnapGuide> b) {
+    if (a.length != b.length) return false;
+    for (var index = 0; index < a.length; index++) {
+      if (a[index].axis != b[index].axis) return false;
+      if ((a[index].coordinate - b[index].coordinate).abs() > 0.001) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   bool _isTapOnDeleteHandle(
     Layer? layer,
     Offset tapPosition,
@@ -233,10 +360,15 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
 }
 
 class CanvasPainter extends CustomPainter {
-  const CanvasPainter({required this.canvasState, this.selectedLayerId});
+  const CanvasPainter({
+    required this.canvasState,
+    this.selectedLayerId,
+    this.snapGuides = const [],
+  });
 
   final CanvasState canvasState;
   final String? selectedLayerId;
+  final List<SnapGuide> snapGuides;
 
   static const double _highlightStrokeWidth = 2.0;
   static const double _handleStrokeWidth = 1.5;
@@ -254,6 +386,8 @@ class CanvasPainter extends CustomPainter {
         _paintLayer(canvas, layer);
       }
     }
+
+    _paintSnapGuides(canvas);
 
     final selectedLayer = canvasState.layers.firstWhereOrNull(
       (l) => l.id == selectedLayerId,
@@ -406,6 +540,34 @@ class CanvasPainter extends CustomPainter {
         final radius = layer.rect.shortestSide / 2;
         canvas.drawCircle(center, radius, paint);
         break;
+    }
+  }
+
+  void _paintSnapGuides(Canvas canvas) {
+    if (snapGuides.isEmpty) return;
+
+    final paint = Paint()
+      ..color = Colors.blueAccent
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    for (final guide in snapGuides) {
+      switch (guide.axis) {
+        case SnapGuideAxis.horizontal:
+          canvas.drawLine(
+            Offset(0, guide.coordinate),
+            Offset(canvasState.canvasSize.width, guide.coordinate),
+            paint,
+          );
+          break;
+        case SnapGuideAxis.vertical:
+          canvas.drawLine(
+            Offset(guide.coordinate, 0),
+            Offset(guide.coordinate, canvasState.canvasSize.height),
+            paint,
+          );
+          break;
+      }
     }
   }
 

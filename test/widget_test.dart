@@ -466,6 +466,30 @@ void main() {
     expect(container.read(selectedLayerProvider), 'second');
   });
 
+  test('snaps a dragged layer to the canvas center line', () {
+    final layer = TextLayer.initial().copyWith(
+      id: 'text',
+      rect: const Rect.fromLTWH(100, 100, 200, 100),
+    );
+    final result = applySnapToRect(
+      const Rect.fromLTWH(430, 100, 200, 100),
+      layer,
+      [const BackgroundLayer(id: 'background'), layer],
+      const Size(1080, 1920),
+      0.25,
+    );
+
+    expect(result.rect.center.dx, 540);
+    expect(
+      result.guides,
+      contains(
+        isA<SnapGuide>()
+            .having((guide) => guide.axis, 'axis', SnapGuideAxis.vertical)
+            .having((guide) => guide.coordinate, 'coordinate', 540),
+      ),
+    );
+  });
+
   testWidgets('renders the editor toolbar', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: BackArtApp()));
 
