@@ -109,6 +109,57 @@ void main() {
     expect(notifier.state.layers.whereType<BackgroundLayer>(), hasLength(1));
   });
 
+  test('fits and fills image layers relative to the canvas', () async {
+    final notifier = CanvasStateNotifier(
+      initialState: CanvasState(
+        canvasSize: const Size(1080, 1920),
+        layers: [
+          const BackgroundLayer(id: 'background'),
+          ImageLayer(
+            id: 'image',
+            image: await createTestImage(),
+            rect: const Rect.fromLTWH(0, 0, 40, 40),
+          ),
+        ],
+      ),
+    );
+
+    expect(notifier.fitImageLayerToCanvas('image'), isTrue);
+    final fittedLayer = notifier.state.layers[1] as ImageLayer;
+    expect(fittedLayer.rect.width, 1080);
+    expect(fittedLayer.rect.height, 1080);
+    expect(fittedLayer.rect.center, const Offset(540, 960));
+    expect(fittedLayer.scale, 1.0);
+
+    expect(notifier.fitImageLayerToCanvas('image', cover: true), isTrue);
+    final filledLayer = notifier.state.layers[1] as ImageLayer;
+    expect(filledLayer.rect.width, 1920);
+    expect(filledLayer.rect.height, 1920);
+    expect(filledLayer.rect.center, const Offset(540, 960));
+  });
+
+  test('resets image layers to their intrinsic size', () async {
+    final notifier = CanvasStateNotifier(
+      initialState: CanvasState(
+        layers: [
+          const BackgroundLayer(id: 'background'),
+          ImageLayer(
+            id: 'image',
+            image: await createTestImage(),
+            rect: const Rect.fromLTWH(100, 200, 400, 600),
+            scale: 2.0,
+          ),
+        ],
+      ),
+    );
+
+    expect(notifier.resetImageLayerToIntrinsicSize('image'), isTrue);
+    final imageLayer = notifier.state.layers[1] as ImageLayer;
+    expect(imageLayer.rect.size, const Size(40, 40));
+    expect(imageLayer.rect.center, const Offset(300, 500));
+    expect(imageLayer.scale, 1.0);
+  });
+
   test('picks the previous editable layer after deleting the current one', () {
     final layers = [
       const BackgroundLayer(id: 'background'),
@@ -311,6 +362,9 @@ void main() {
 
     expect(find.text('编辑图片'), findsOneWidget);
     expect(find.text('替换图片'), findsOneWidget);
+    expect(find.text('适应画布'), findsOneWidget);
+    expect(find.text('铺满画布'), findsOneWidget);
+    expect(find.text('原始尺寸'), findsOneWidget);
     expect(find.text('透明度'), findsOneWidget);
   });
 }

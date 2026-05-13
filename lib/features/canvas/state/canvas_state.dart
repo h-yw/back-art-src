@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:BackArt/core/utils/color_utils.dart';
 import 'package:BackArt/features/canvas/data/canvas_draft_repository.dart';
@@ -241,6 +242,46 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
     return duplicate.id;
   }
 
+  bool fitImageLayerToCanvas(String layerId, {bool cover = false}) {
+    final imageLayer = state.layers.firstWhereOrNull((layer) {
+      return layer.id == layerId && layer is ImageLayer;
+    });
+    if (imageLayer is! ImageLayer) return false;
+
+    final updatedRect = _layoutImageRect(
+      imageSize: Size(
+        imageLayer.image.width.toDouble(),
+        imageLayer.image.height.toDouble(),
+      ),
+      canvasSize: state.canvasSize,
+      cover: cover,
+    );
+
+    updateLayer(
+      imageLayer.copyWith(rect: updatedRect, scale: 1.0, alignment: null),
+    );
+    return true;
+  }
+
+  bool resetImageLayerToIntrinsicSize(String layerId) {
+    final imageLayer = state.layers.firstWhereOrNull((layer) {
+      return layer.id == layerId && layer is ImageLayer;
+    });
+    if (imageLayer is! ImageLayer) return false;
+
+    final currentCenter = imageLayer.rect.center;
+    final intrinsicRect = Rect.fromCenter(
+      center: currentCenter,
+      width: imageLayer.image.width.toDouble(),
+      height: imageLayer.image.height.toDouble(),
+    );
+
+    updateLayer(
+      imageLayer.copyWith(rect: intrinsicRect, scale: 1.0, alignment: null),
+    );
+    return true;
+  }
+
   Layer _buildDuplicatedLayer(Layer layer, Offset offset) {
     final newRect = layer.rect.translate(offset.dx, offset.dy);
     final newId = generateLayerId();
@@ -479,6 +520,24 @@ final initialCanvasStateProvider = Provider<CanvasState?>((ref) => null);
 final canvasDraftRepositoryProvider = Provider<CanvasDraftRepository?>(
   (ref) => null,
 );
+
+Rect _layoutImageRect({
+  required Size imageSize,
+  required Size canvasSize,
+  required bool cover,
+}) {
+  final widthScale = canvasSize.width / imageSize.width;
+  final heightScale = canvasSize.height / imageSize.height;
+  final fittedScale = cover
+      ? max(widthScale, heightScale)
+      : min(widthScale, heightScale);
+
+  return Rect.fromCenter(
+    center: canvasSize.center(Offset.zero),
+    width: imageSize.width * fittedScale,
+    height: imageSize.height * fittedScale,
+  );
+}
 
 final canvasStateProvider =
     StateNotifierProvider<CanvasStateNotifier, CanvasState>((ref) {

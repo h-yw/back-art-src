@@ -66,6 +66,32 @@ class ImageEditorPanel extends ConsumerWidget {
           label: const Text('替换图片'),
         ),
         const SizedBox(height: 24),
+        Text('布局', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            FilledButton.tonalIcon(
+              onPressed: () => canvasNotifier.fitImageLayerToCanvas(layer.id),
+              icon: const Icon(Icons.fit_screen_outlined),
+              label: const Text('适应画布'),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: () =>
+                  canvasNotifier.fitImageLayerToCanvas(layer.id, cover: true),
+              icon: const Icon(Icons.crop_free_outlined),
+              label: const Text('铺满画布'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () =>
+                  canvasNotifier.resetImageLayerToIntrinsicSize(layer.id),
+              icon: const Icon(Icons.aspect_ratio_outlined),
+              label: const Text('原始尺寸'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
         Text('透明度', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         Row(
