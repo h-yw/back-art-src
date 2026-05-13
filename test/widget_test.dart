@@ -490,6 +490,22 @@ void main() {
     );
   });
 
+  test('only enables snapping for translation-like transforms', () {
+    expect(shouldSnapForTransform(scaleDelta: 1.0, rotationDelta: 0.0), isTrue);
+    expect(
+      shouldSnapForTransform(scaleDelta: 1.02, rotationDelta: 0.02),
+      isTrue,
+    );
+    expect(
+      shouldSnapForTransform(scaleDelta: 1.1, rotationDelta: 0.0),
+      isFalse,
+    );
+    expect(
+      shouldSnapForTransform(scaleDelta: 1.0, rotationDelta: 0.08),
+      isFalse,
+    );
+  });
+
   testWidgets('renders the editor toolbar', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: BackArtApp()));
 

@@ -12,6 +12,8 @@ const double kHandleTapTargetRadius = 20.0;
 const Duration kTextDoubleTapThreshold = Duration(milliseconds: 280);
 const double kDoubleTapSlop = 24.0;
 const double kSnapThresholdInScreenPixels = 10.0;
+const double kSnapScaleTolerance = 0.03;
+const double kSnapRotationTolerance = 0.03;
 
 enum SnapGuideAxis { horizontal, vertical }
 
@@ -108,6 +110,15 @@ SnapResult applySnapToRect(
       SnapGuide(axis: SnapGuideAxis.horizontal, coordinate: snappedY),
   ];
   return SnapResult(rect: snappedRect, guides: guides);
+}
+
+@visibleForTesting
+bool shouldSnapForTransform({
+  required double scaleDelta,
+  required double rotationDelta,
+}) {
+  return (scaleDelta - 1.0).abs() <= kSnapScaleTolerance &&
+      rotationDelta.abs() <= kSnapRotationTolerance;
 }
 
 class CanvasView extends ConsumerStatefulWidget {
@@ -227,13 +238,19 @@ class _CanvasViewState extends ConsumerState<CanvasView> {
           width: _initialLayerState!.rect.width,
           height: _initialLayerState!.rect.height,
         );
-        final snapResult = applySnapToRect(
-          newRect,
-          currentLayer,
-          canvasState.layers,
-          canvasState.canvasSize,
-          scale,
+        final shouldSnap = shouldSnapForTransform(
+          scaleDelta: details.scale,
+          rotationDelta: details.rotation,
         );
+        final snapResult = shouldSnap
+            ? applySnapToRect(
+                newRect,
+                currentLayer,
+                canvasState.layers,
+                canvasState.canvasSize,
+                scale,
+              )
+            : SnapResult(rect: newRect, guides: const []);
         final updatedLayer = currentLayer.copyWith(
           rect: snapResult.rect,
           scale: newScale,
