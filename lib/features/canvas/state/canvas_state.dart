@@ -248,6 +248,17 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
     _recordState(state.copyWith(layers: newLayers));
   }
 
+  void addImageFromImage(ui.Image image) {
+    final rect = _layoutImageRect(
+      imageSize: Size(image.width.toDouble(), image.height.toDouble()),
+      canvasSize: state.canvasSize,
+      cover: false,
+      maxScale: 1.0,
+    );
+    final layer = ImageLayer(id: generateLayerId(), image: image, rect: rect);
+    _recordState(state.copyWith(layers: [...state.layers, layer]));
+  }
+
   String? duplicateLayer(
     String layerId, {
     Offset offset = const Offset(24, 24),
@@ -294,8 +305,13 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
       imageLayer.copyWith(
         image: image,
         rect: updatedRect,
-        scale: 1.0,
-        alignment: null,
+        scale: mode == ImageReplacementMode.preserveFrame
+            ? imageLayer.scale
+            : 1.0,
+        alignment: mode == ImageReplacementMode.preserveFrame
+            ? imageLayer.alignment
+            : null,
+        clearAlignment: mode != ImageReplacementMode.preserveFrame,
       ),
     );
     return true;
@@ -317,7 +333,12 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
     );
 
     updateLayer(
-      imageLayer.copyWith(rect: updatedRect, scale: 1.0, alignment: null),
+      imageLayer.copyWith(
+        rect: updatedRect,
+        scale: 1.0,
+        alignment: null,
+        clearAlignment: true,
+      ),
     );
     return true;
   }
@@ -336,7 +357,12 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
     );
 
     updateLayer(
-      imageLayer.copyWith(rect: intrinsicRect, scale: 1.0, alignment: null),
+      imageLayer.copyWith(
+        rect: intrinsicRect,
+        scale: 1.0,
+        alignment: null,
+        clearAlignment: true,
+      ),
     );
     return true;
   }
@@ -584,12 +610,13 @@ Rect _layoutImageRect({
   required Size imageSize,
   required Size canvasSize,
   required bool cover,
+  double maxScale = double.infinity,
 }) {
   final widthScale = canvasSize.width / imageSize.width;
   final heightScale = canvasSize.height / imageSize.height;
-  final fittedScale = cover
-      ? max(widthScale, heightScale)
-      : min(widthScale, heightScale);
+  final fittedScale =
+      (cover ? max(widthScale, heightScale) : min(widthScale, heightScale))
+          .clamp(0.0, maxScale);
 
   return Rect.fromCenter(
     center: canvasSize.center(Offset.zero),

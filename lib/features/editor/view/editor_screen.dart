@@ -94,8 +94,7 @@ class EditorScreen extends ConsumerWidget {
     if (pickedFile != null) {
       final data = await pickedFile.readAsBytes();
       final image = await _bytesToImage(data);
-      final layer = ImageLayer.fromImage(image);
-      ref.read(canvasStateProvider.notifier).addLayer(layer);
+      ref.read(canvasStateProvider.notifier).addImageFromImage(image);
     }
   }
 

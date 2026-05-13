@@ -149,6 +149,22 @@ void main() {
     expect(filledLayer.rect.center, const Offset(540, 960));
   });
 
+  test('adds imported images without enlarging smaller sources', () async {
+    final notifier = CanvasStateNotifier(
+      initialState: const CanvasState(
+        canvasSize: Size(1080, 1920),
+        layers: [BackgroundLayer(id: 'background')],
+      ),
+    );
+
+    notifier.addImageFromImage(await createSizedTestImage(200, 100));
+
+    final imageLayer = notifier.state.layers[1] as ImageLayer;
+    expect(imageLayer.rect.size, const Size(200, 100));
+    expect(imageLayer.rect.center, const Offset(540, 960));
+    expect(imageLayer.scale, 1.0);
+  });
+
   test('resets image layers to their intrinsic size', () async {
     final notifier = CanvasStateNotifier(
       initialState: CanvasState(
@@ -182,6 +198,7 @@ void main() {
             image: await createSizedTestImage(40, 40),
             rect: const Rect.fromLTWH(100, 200, 300, 500),
             scale: 1.5,
+            alignment: Alignment.bottomRight,
           ),
         ],
       ),
@@ -191,7 +208,8 @@ void main() {
     expect(notifier.replaceImageLayer('image', replacement), isTrue);
     var imageLayer = notifier.state.layers[1] as ImageLayer;
     expect(imageLayer.rect, const Rect.fromLTWH(100, 200, 300, 500));
-    expect(imageLayer.scale, 1.0);
+    expect(imageLayer.scale, 1.5);
+    expect(imageLayer.alignment, Alignment.bottomRight);
     expect(imageLayer.image.width, 200);
     expect(imageLayer.image.height, 100);
 
@@ -207,6 +225,8 @@ void main() {
     expect(imageLayer.rect.width, 1080);
     expect(imageLayer.rect.height, 540);
     expect(imageLayer.rect.center, const Offset(540, 960));
+    expect(imageLayer.scale, 1.0);
+    expect(imageLayer.alignment, isNull);
 
     expect(
       notifier.replaceImageLayer(
