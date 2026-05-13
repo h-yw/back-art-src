@@ -14,13 +14,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Future<ui.Image> createTestImage() async {
+  Future<ui.Image> createSizedTestImage(int width, int height) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     final paint = Paint()..color = Colors.blue;
-    canvas.drawRect(const Rect.fromLTWH(0, 0, 40, 40), paint);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+      paint,
+    );
     final picture = recorder.endRecording();
-    return picture.toImage(40, 40);
+    return picture.toImage(width, height);
+  }
+
+  Future<ui.Image> createTestImage() async {
+    return createSizedTestImage(40, 40);
   }
 
   setUp(() {
@@ -162,6 +169,57 @@ void main() {
     expect(imageLayer.rect.size, const Size(40, 40));
     expect(imageLayer.rect.center, const Offset(300, 500));
     expect(imageLayer.scale, 1.0);
+  });
+
+  test('replaces image layers with explicit layout strategies', () async {
+    final notifier = CanvasStateNotifier(
+      initialState: CanvasState(
+        canvasSize: const Size(1080, 1920),
+        layers: [
+          const BackgroundLayer(id: 'background'),
+          ImageLayer(
+            id: 'image',
+            image: await createSizedTestImage(40, 40),
+            rect: const Rect.fromLTWH(100, 200, 300, 500),
+            scale: 1.5,
+          ),
+        ],
+      ),
+    );
+    final replacement = await createSizedTestImage(200, 100);
+
+    expect(notifier.replaceImageLayer('image', replacement), isTrue);
+    var imageLayer = notifier.state.layers[1] as ImageLayer;
+    expect(imageLayer.rect, const Rect.fromLTWH(100, 200, 300, 500));
+    expect(imageLayer.scale, 1.0);
+    expect(imageLayer.image.width, 200);
+    expect(imageLayer.image.height, 100);
+
+    expect(
+      notifier.replaceImageLayer(
+        'image',
+        replacement,
+        mode: ImageReplacementMode.fitCanvas,
+      ),
+      isTrue,
+    );
+    imageLayer = notifier.state.layers[1] as ImageLayer;
+    expect(imageLayer.rect.width, 1080);
+    expect(imageLayer.rect.height, 540);
+    expect(imageLayer.rect.center, const Offset(540, 960));
+
+    expect(
+      notifier.replaceImageLayer(
+        'image',
+        replacement,
+        mode: ImageReplacementMode.fillCanvas,
+      ),
+      isTrue,
+    );
+    imageLayer = notifier.state.layers[1] as ImageLayer;
+    expect(imageLayer.rect.width, 3840);
+    expect(imageLayer.rect.height, 1920);
+    expect(imageLayer.rect.center, const Offset(540, 960));
   });
 
   test('syncs the layer id counter with restored draft ids', () {
@@ -410,6 +468,9 @@ void main() {
 
     expect(find.text('编辑图片'), findsOneWidget);
     expect(find.text('替换图片'), findsOneWidget);
+    expect(find.text('保持当前框'), findsOneWidget);
+    expect(find.text('替换后适应'), findsOneWidget);
+    expect(find.text('替换后铺满'), findsOneWidget);
     expect(find.text('适应画布'), findsOneWidget);
     expect(find.text('铺满画布'), findsOneWidget);
     expect(find.text('原始尺寸'), findsOneWidget);

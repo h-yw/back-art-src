@@ -14,8 +14,9 @@ class ImageEditorPanel extends ConsumerWidget {
   Future<void> _replaceImage(
     BuildContext context,
     WidgetRef ref,
-    ImageLayer imageLayer,
-  ) async {
+    ImageLayer imageLayer, {
+    ImageReplacementMode mode = ImageReplacementMode.preserveFrame,
+  }) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) {
@@ -30,7 +31,7 @@ class ImageEditorPanel extends ConsumerWidget {
 
     ref
         .read(canvasStateProvider.notifier)
-        .updateLayer(imageLayer.copyWith(image: image));
+        .replaceImageLayer(imageLayer.id, image, mode: mode);
   }
 
   Future<ui.Image> _bytesToImage(Uint8List data) async {
@@ -60,10 +61,38 @@ class ImageEditorPanel extends ConsumerWidget {
       children: [
         Text('编辑图片', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: () => _replaceImage(context, ref, layer),
-          icon: const Icon(Icons.photo_library_outlined),
-          label: const Text('替换图片'),
+        Text('替换图片', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            FilledButton.icon(
+              onPressed: () => _replaceImage(context, ref, layer),
+              icon: const Icon(Icons.photo_library_outlined),
+              label: const Text('保持当前框'),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: () => _replaceImage(
+                context,
+                ref,
+                layer,
+                mode: ImageReplacementMode.fitCanvas,
+              ),
+              icon: const Icon(Icons.fit_screen_outlined),
+              label: const Text('替换后适应'),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: () => _replaceImage(
+                context,
+                ref,
+                layer,
+                mode: ImageReplacementMode.fillCanvas,
+              ),
+              icon: const Icon(Icons.crop_free_outlined),
+              label: const Text('替换后铺满'),
+            ),
+          ],
         ),
         const SizedBox(height: 24),
         Text('布局', style: Theme.of(context).textTheme.titleMedium),

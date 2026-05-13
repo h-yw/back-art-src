@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:BackArt/core/utils/color_utils.dart';
 import 'package:BackArt/features/canvas/data/canvas_draft_repository.dart';
@@ -44,6 +45,8 @@ class CanvasState {
     );
   }
 }
+
+enum ImageReplacementMode { preserveFrame, fitCanvas, fillCanvas }
 
 class CanvasStateNotifier extends StateNotifier<CanvasState> {
   CanvasStateNotifier({
@@ -261,6 +264,41 @@ class CanvasStateNotifier extends StateNotifier<CanvasState> {
     final newLayers = [...state.layers]..insert(originalIndex + 1, duplicate);
     _recordState(state.copyWith(layers: newLayers));
     return duplicate.id;
+  }
+
+  bool replaceImageLayer(
+    String layerId,
+    ui.Image image, {
+    ImageReplacementMode mode = ImageReplacementMode.preserveFrame,
+  }) {
+    final imageLayer = state.layers.firstWhereOrNull((layer) {
+      return layer.id == layerId && layer is ImageLayer;
+    });
+    if (imageLayer is! ImageLayer) return false;
+
+    final updatedRect = switch (mode) {
+      ImageReplacementMode.preserveFrame => imageLayer.rect,
+      ImageReplacementMode.fitCanvas => _layoutImageRect(
+        imageSize: Size(image.width.toDouble(), image.height.toDouble()),
+        canvasSize: state.canvasSize,
+        cover: false,
+      ),
+      ImageReplacementMode.fillCanvas => _layoutImageRect(
+        imageSize: Size(image.width.toDouble(), image.height.toDouble()),
+        canvasSize: state.canvasSize,
+        cover: true,
+      ),
+    };
+
+    updateLayer(
+      imageLayer.copyWith(
+        image: image,
+        rect: updatedRect,
+        scale: 1.0,
+        alignment: null,
+      ),
+    );
+    return true;
   }
 
   bool fitImageLayerToCanvas(String layerId, {bool cover = false}) {
